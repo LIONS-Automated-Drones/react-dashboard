@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import VideoFeed from "@/components/video-feed" // Renamed import
-import DigitalTwin from "@/components/digital-twin" // Renamed import
+import VideoFeed from "@/components/video-feed"
+import DigitalTwin from "@/components/digital-twin"
 import ChatBox from "@/components/chat-box"
-import StatusBox from "@/components/status-box" // Renamed import
+import StatusBox from "@/components/status-box"
 
 // Define the type for dashboard messages to include a timestamp
 interface DashboardMessage {
@@ -32,20 +32,20 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <h1 className="text-2xl font-bold mb-4 text-green-600">ARES Control Panel</h1>
+    <div className="min-h-screen bg-zinc-950 p-4">
+      <h1 className="text-2xl font-bold mb-4 text-green-400">ARES Control Panel</h1>
 
       <div className="grid grid-cols-2 grid-rows-2 gap-4 h-[calc(100vh-120px)]">
         {/* Top-left: Video Feed - 50% width, 50% height */}
         <VideoFeed
-          title="Live Drone Video Feed" // Updated title prop
+          title="Live Drone Video Feed"
           executablePath="test1.exe"
           onMessage={(msg) => addDashboardMessage(`Video Feed: ${msg}`)}
         />
 
         {/* Top-right: Digital Twin Display - 50% width, 50% height */}
         <DigitalTwin
-          title="Digital Twin Display" // Updated title prop
+          title="Digital Twin Display"
           videoId="dQw4w9WgXcQ"
           onMessage={(msg) => addDashboardMessage(`Digital Twin: ${msg}`)}
         />

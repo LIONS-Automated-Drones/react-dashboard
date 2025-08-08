@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plug, PlugZap, Video, VideoOff, X } from "lucide-react"
+import { Plug, PlugZap, Video, VideoOff } from "lucide-react"
 
 interface VideoFeedProps {
   title: string
@@ -14,7 +14,7 @@ interface VideoFeedProps {
 export default function VideoFeed({ title, executablePath, onMessage }: VideoFeedProps) {
   const [isDroneConnected, setIsDroneConnected] = useState(false)
   const [isVideoFeedOn, setIsVideoFeedOn] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
+  // Removed isMinimized state
 
   const handleDroneConnection = () => {
     const newConnectionState = !isDroneConnected
@@ -50,15 +50,15 @@ export default function VideoFeed({ title, executablePath, onMessage }: VideoFee
 
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0 bg-gray-50">
-        <CardTitle className="text-sm font-medium text-green-600">Live Drone Video Feed</CardTitle>
+      <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0 bg-gray-800">
+        <CardTitle className="text-sm font-medium text-green-400">Live Drone Video Feed</CardTitle>
         <div className="flex space-x-2">
           {/* Drone Connection Button */}
           <Button
             variant={isDroneConnected ? "destructive" : "default"}
             size="sm"
             onClick={handleDroneConnection}
-            className="h-7 px-3 text-xs"
+            className="h-7 px-3 text-xs bg-green-600 text-white hover:bg-green-700"
           >
             {isDroneConnected ? (
               <>
@@ -79,7 +79,9 @@ export default function VideoFeed({ title, executablePath, onMessage }: VideoFee
             size="sm"
             onClick={handleVideoFeedToggle}
             disabled={!isDroneConnected}
-            className={`h-7 px-3 text-xs ${!isDroneConnected ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`h-7 px-3 text-xs ${
+              !isDroneConnected ? "opacity-50 cursor-not-allowed" : ""
+            } bg-green-600 text-white hover:bg-green-700 border-green-600 hover:text-white`}
           >
             {isVideoFeedOn ? (
               <>
@@ -94,21 +96,19 @@ export default function VideoFeed({ title, executablePath, onMessage }: VideoFee
             )}
           </Button>
 
-          {/* Minimize Button */}
-          {/* <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsMinimized(!isMinimized)}>
-            <X className="h-4 w-4" />
-          </Button> */}
+          {/* Removed Minimize Button */}
         </div>
       </CardHeader>
-      <CardContent className={`p-0 flex-1 ${isMinimized ? "hidden" : ""}`}>
+      <CardContent className="p-0 flex-1">
+        {" "}
+        {/* Removed isMinimized class */}
         <div className="bg-black text-green-400 h-full p-4 font-mono text-sm overflow-auto">
           {!isDroneConnected && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <p className="mb-2">Drone not connected</p>
+              <p className="mb-2 text-green-400">Drone not connected</p>
               <p className="text-xs text-gray-500">Click Connect to establish drone connection</p>
             </div>
           )}
-
           {isDroneConnected && !isVideoFeedOn && (
             <div className="h-full">
               <div className="border border-gray-700 h-full p-4 flex flex-col items-center justify-center">
@@ -127,7 +127,6 @@ export default function VideoFeed({ title, executablePath, onMessage }: VideoFee
               </div>
             </div>
           )}
-
           {isDroneConnected && isVideoFeedOn && (
             <div className="h-full">
               <div className="border border-gray-700 h-full p-2 bg-gray-900">
@@ -139,7 +138,6 @@ export default function VideoFeed({ title, executablePath, onMessage }: VideoFee
                   <div className="absolute top-2 right-2 text-xs text-green-400 bg-black bg-opacity-75 px-2 py-1 rounded">
                     1080p
                   </div>
-
                   {/* Video feed placeholder */}
                   <div className="text-center">
                     <p className="text-green-400 mb-2">📹 DRONE CAMERA FEED</p>
@@ -163,7 +161,6 @@ export default function VideoFeed({ title, executablePath, onMessage }: VideoFee
                       </div>
                     </div>
                   </div>
-
                   {/* Crosshair overlay */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-8 h-8 border border-green-400 opacity-50">
