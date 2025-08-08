@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Battery, Wifi, Shield, ShieldCheck } from "lucide-react"
@@ -13,8 +13,7 @@ interface DashboardMessage {
 }
 
 interface StatusBoxProps {
-  // Renamed interface
-  messages: DashboardMessage[] // Updated prop type
+  messages: DashboardMessage[]
   onMessage: (message: string) => void
 }
 
@@ -27,7 +26,6 @@ interface DroneTelemetry {
 }
 
 export default function StatusBox({ messages, onMessage }: StatusBoxProps) {
-  // Renamed component
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const [manualOverride, setManualOverride] = useState(false)
   const [telemetry, setTelemetry] = useState<DroneTelemetry>({
@@ -84,121 +82,117 @@ export default function StatusBox({ messages, onMessage }: StatusBoxProps) {
   }
 
   const getBatteryColor = (level: number) => {
-    if (level > 50) return "text-green-600"
-    if (level > 20) return "text-yellow-600"
+    if (level > 50) return "text-green-400"
+    if (level > 20) return "text-yellow-400"
     return "text-red-600"
   }
 
   const getSignalColor = (strength: number) => {
-    if (strength > 70) return "text-green-600"
-    if (strength > 40) return "text-yellow-600"
+    if (strength > 70) return "text-green-400"
+    if (strength > 40) return "text-yellow-400"
     return "text-red-600"
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Message Box - Fixed height calculation */}
-      <Card className="flex flex-col h-[calc(100%-140px)]">
-        <CardHeader className="p-3 bg-gray-50 flex-shrink-0">
-          <CardTitle className="text-sm font-medium text-green-600">System Messages and Telemetry</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          <ScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="p-4">
-              {messages.map((message, index) => (
-                <div key={index} className="mb-2 text-sm">
-                  <span className="text-gray-500">[{message.timestamp.toLocaleTimeString()}]</span>{" "}
-                  <span>{message.content}</span>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+    <Card className="flex flex-col h-full">
+      <CardHeader className="p-3 bg-gray-800 flex-shrink-0">
+        <CardTitle className="text-sm font-medium text-green-400">System Messages and Telemetry</CardTitle>
+      </CardHeader>
+      <CardContent className="flex-1 p-0 overflow-hidden">
+        <ScrollArea className="h-full" ref={scrollAreaRef}>
+          <div className="p-4">
+            {messages.map((message, index) => (
+              <div key={index} className="mb-2 text-xs">
+                {" "}
+                {/* Reduced font size here */}
+                <span className="text-gray-400">[{message.timestamp.toLocaleTimeString()}]</span>{" "}
+                <span>{message.content}</span>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </CardContent>
 
-      {/* Control Bar with Drone Telemetry - Increased fixed height */}
-      <Card className="h-32 mt-2 flex-shrink-0">
-        <CardContent className="p-4 h-full">
-          <div className="flex items-center justify-between h-full">
-            {/* Manual Override Button */}
-            <div className="flex flex-col items-center space-y-2">
-              <Button
-                onClick={handleManualOverride}
-                variant={manualOverride ? "destructive" : "default"}
-                className="h-14 px-6 text-sm font-medium"
-              >
-                Manual Override
-                {manualOverride && <span className="ml-2 text-xs">(ON)</span>}
-              </Button>
-              <div className="text-xs text-gray-600">Status: {manualOverride ? "ACTIVE" : "STANDBY"}</div>
+      <CardFooter className="p-2 flex-shrink-0 bg-gray-800">
+        <div className="flex items-center justify-between h-full w-full">
+          {/* Manual Override Button */}
+          <div className="flex flex-col items-center space-y-1">
+            <Button
+              onClick={handleManualOverride}
+              variant={manualOverride ? "destructive" : "default"}
+              className="h-9 px-3 text-xs font-medium bg-green-600 text-white hover:bg-green-700"
+            >
+              Manual Override
+              {manualOverride && <span className="ml-1 text-xs">(ON)</span>}
+            </Button>
+            <div className="text-xs text-gray-400">Status: {manualOverride ? "ACTIVE" : "STANDBY"}</div>
+          </div>
+
+          {/* Drone Telemetry */}
+          <div className="flex flex-col items-center space-y-0.5">
+            <div className={`text-xs font-medium ${manualOverride ? "text-gray-400" : "text-gray-500"}`}>
+              Drone Telemetry
             </div>
 
-            {/* Drone Telemetry */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className={`text-xs font-medium ${manualOverride ? "text-gray-600" : "text-gray-400"}`}>
-                Drone Telemetry
+            {/* Armed Status */}
+            <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-0.5">
+                {telemetry.armed ? (
+                  <ShieldCheck className="h-3 w-3 text-red-600" />
+                ) : (
+                  <Shield className="h-3 w-3 text-gray-500" />
+                )}
+                <span className={`text-xs font-medium ${telemetry.armed ? "text-red-600" : "text-gray-500"}`}>
+                  {telemetry.armed ? "ARMED" : "DISARMED"}
+                </span>
               </div>
 
-              {/* Armed Status */}
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1">
-                  {telemetry.armed ? (
-                    <ShieldCheck className="h-4 w-4 text-red-600" />
-                  ) : (
-                    <Shield className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={`text-xs font-medium ${telemetry.armed ? "text-red-600" : "text-gray-400"}`}>
-                    {telemetry.armed ? "ARMED" : "DISARMED"}
-                  </span>
-                </div>
-
-                {/* Battery */}
-                <div className="flex items-center space-x-1">
-                  <Battery className={`h-4 w-4 ${getBatteryColor(telemetry.batteryLife)}`} />
-                  <span className={`text-xs font-mono ${getBatteryColor(telemetry.batteryLife)}`}>
-                    {telemetry.batteryLife.toFixed(0)}%
-                  </span>
-                </div>
-
-                {/* Signal */}
-                <div className="flex items-center space-x-1">
-                  <Wifi className={`h-4 w-4 ${getSignalColor(telemetry.signalStrength)}`} />
-                  <span className={`text-xs font-mono ${getSignalColor(telemetry.signalStrength)}`}>
-                    {telemetry.signalStrength.toFixed(0)}%
-                  </span>
-                </div>
+              {/* Battery */}
+              <div className="flex items-center space-x-0.5">
+                <Battery className={`h-3 w-3 ${getBatteryColor(telemetry.batteryLife)}`} />
+                <span className={`text-xs font-mono ${getBatteryColor(telemetry.batteryLife)}`}>
+                  {telemetry.batteryLife.toFixed(0)}%
+                </span>
               </div>
-            </div>
 
-            {/* Flight Data Display */}
-            <div className="text-sm text-gray-600 text-center space-y-1">
-              <div className="font-medium text-xs">Flight Data</div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex flex-col items-center">
-                  <span className="text-gray-500">Altitude</span>
-                  <span
-                    className={`font-mono px-2 py-1 rounded ${
-                      manualOverride ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {telemetry.altitude.toFixed(1)}m
-                  </span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="text-gray-500">Velocity</span>
-                  <span
-                    className={`font-mono px-2 py-1 rounded ${
-                      manualOverride ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {telemetry.velocity.toFixed(1)} m/s
-                  </span>
-                </div>
+              {/* Signal */}
+              <div className="flex items-center space-x-0.5">
+                <Wifi className={`h-3 w-3 ${getSignalColor(telemetry.signalStrength)}`} />
+                <span className={`text-xs font-mono ${getSignalColor(telemetry.signalStrength)}`}>
+                  {telemetry.signalStrength.toFixed(0)}%
+                </span>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+
+          {/* Flight Data Display */}
+          <div className="text-xs text-gray-400 text-center space-y-0.5">
+            <div className="font-medium text-xs">Flight Data</div>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              <div className="flex flex-col items-center">
+                <span className="text-gray-500">Altitude</span>
+                <span
+                  className={`font-mono px-1 py-0.5 rounded ${
+                    manualOverride ? "bg-blue-800 text-blue-200" : "bg-gray-700 text-gray-400"
+                  }`}
+                >
+                  {telemetry.altitude.toFixed(1)}m
+                </span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-gray-500">Velocity</span>
+                <span
+                  className={`font-mono px-1 py-0.5 rounded ${
+                    manualOverride ? "bg-blue-800 text-blue-200" : "bg-gray-700 text-gray-400"
+                  }`}
+                >
+                  {telemetry.velocity.toFixed(1)} m/s
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardFooter>
+    </Card>
   )
 }

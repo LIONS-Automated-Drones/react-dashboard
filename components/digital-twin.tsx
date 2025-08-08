@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei"
-import { Eye, EyeOff, Scan, ScanLine, X } from "lucide-react"
+import { Eye, EyeOff, Scan, ScanLine } from "lucide-react"
 import * as THREE from "three"
 
 interface DigitalTwinProps {
@@ -65,13 +65,14 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
   const [isDigitalTwinOn, setIsDigitalTwinOn] = useState(false)
   const [isPointCloudGenerating, setIsPointCloudGenerating] = useState(false)
   const [pointCloudData, setPointCloudData] = useState<PointCloudData | null>(null)
-  const [isMinimized, setIsMinimized] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  // Add a ref to store the retained point cloud data
+  const retainedPointCloudRef = useRef<PointCloudData | null>(null)
 
   // Simulate point cloud data generation
   const generateMockPointCloudData = (): PointCloudData => {
-    const numPoints = 5000
+    const numPoints = 1000
     const vertices = new Float32Array(numPoints * 3)
     const colors = new Float32Array(numPoints * 3)
 
@@ -102,7 +103,7 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
   }
 
   // Fetch point cloud data from server (simulated)
-  const fetchPointCloudData = async (): Promise<PointCloudData> => {
+  const fetchPointCloudData = async (existingData?: PointCloudData): Promise<PointCloudData> => {
     // In a real implementation, this would fetch a PLY file from the server
     // const response = await fetch('/api/pointcloud/latest.ply')
     // const plyData = await response.arrayBuffer()
@@ -110,7 +111,57 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
 
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    return generateMockPointCloudData()
+    const newData = generateMockPointCloudData()
+
+    // If we have existing data, accumulate the new points
+    if (existingData) {
+      const totalVertices = existingData.vertices.length + newData.vertices.length
+      const totalColors = existingData.colors.length + newData.colors.length
+
+      const combinedVertices = new Float32Array(totalVertices)
+      const combinedColors = new Float32Array(totalColors)
+
+      // Copy existing data
+      combinedVertices.set(existingData.vertices, 0)
+      combinedColors.set(existingData.colors, 0)
+
+      // Add new data
+      combinedVertices.set(newData.vertices, existingData.vertices.length)
+      combinedColors.set(newData.colors, existingData.colors.length)
+
+      return {
+        vertices: combinedVertices,
+        colors: combinedColors,
+        timestamp: Date.now(),
+      }
+    }
+
+    return newData
+  }
+
+  // Save point cloud data to server (simulated)
+  const savePointCloudToServer = async (data: PointCloudData): Promise<void> => {
+    // In a real implementation, this would save the PLY file to the server
+    // const plyContent = generatePlyFile(data)
+    // await fetch('/api/pointcloud/save', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/octet-stream' },
+    //   body: plyContent
+    // })
+
+    // Simulate saving to server
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    onMessage(`Point cloud data saved to server (${(data.vertices.length / 3).toLocaleString()} points)`)
+  }
+
+  // Delete point cloud data from server (simulated)
+  const deletePointCloudFromServer = async (): Promise<void> => {
+    // In a real implementation, this would delete the PLY file from the server
+    // await fetch('/api/pointcloud/delete', { method: 'DELETE' })
+
+    // Simulate deleting from server
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    onMessage("Point cloud data deleted from server")
   }
 
   const handleDigitalTwinToggle = () => {
@@ -119,6 +170,13 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
 
     if (newState) {
       onMessage(`Digital twin display enabled for ${title}`)
+      // If we have retained data and not currently generating, show the retained data
+      if (retainedPointCloudRef.current && !isPointCloudGenerating) {
+        setPointCloudData(retainedPointCloudRef.current)
+        onMessage(
+          `Displaying retained point cloud data (${(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()} points)`,
+        )
+      }
     } else {
       onMessage(`Digital twin display disabled for ${title}`)
     }
@@ -133,17 +191,29 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
       setIsLoading(true)
 
       try {
-        // Initial point cloud fetch
-        const initialData = await fetchPointCloudData()
-        setPointCloudData(initialData)
-        onMessage(`Point cloud data received - ${initialData.vertices.length / 3} points`)
+        // If we have retained data, start with that
+        if (retainedPointCloudRef.current) {
+          setPointCloudData(retainedPointCloudRef.current)
+          onMessage(
+            `Resuming from retained point cloud data (${(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()} points)`,
+          )
+        } else {
+          // Initial point cloud fetch
+          const initialData = await fetchPointCloudData()
+          setPointCloudData(initialData)
+          retainedPointCloudRef.current = initialData
+          onMessage(`Point cloud data received - ${(initialData.vertices.length / 3).toLocaleString()} points`)
+        }
 
         // Start periodic polling every 5 seconds
         pollingIntervalRef.current = setInterval(async () => {
           try {
-            const newData = await fetchPointCloudData()
+            const newData = await fetchPointCloudData(retainedPointCloudRef.current || undefined)
             setPointCloudData(newData)
-            onMessage(`Point cloud updated - ${newData.vertices.length / 3} points`)
+            retainedPointCloudRef.current = newData // Update retained data
+            const totalPoints = newData.vertices.length / 3
+            const newPoints = 1000 // Since we know we add 1000 points each time
+            onMessage(`Point cloud updated - ${totalPoints.toLocaleString()} total points (+${newPoints} new)`)
           } catch (error) {
             onMessage(`Point cloud update failed: ${error instanceof Error ? error.message : "Unknown error"}`)
           }
@@ -155,39 +225,57 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
         setIsLoading(false)
       }
     } else {
-      onMessage(`Point cloud generation terminated for ${title}`)
+      onMessage(`Point cloud generation stopped for ${title}`)
 
-      // Clear polling interval
+      // Clear polling interval but retain the data
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current)
         pollingIntervalRef.current = null
       }
 
-      // Clear point cloud data
-      setPointCloudData(null)
+      // Save the current point cloud data to server if we have any
+      if (pointCloudData) {
+        try {
+          await savePointCloudToServer(pointCloudData)
+          retainedPointCloudRef.current = pointCloudData // Ensure we retain the data
+          onMessage("Point cloud data retained for session")
+        } catch (error) {
+          onMessage(`Failed to save point cloud data: ${error instanceof Error ? error.message : "Unknown error"}`)
+        }
+      }
+
+      // Don't clear pointCloudData here - keep it visible
     }
   }
 
-  // Cleanup on unmount
+  // Cleanup on unmount - this is when the dashboard closes
   useEffect(() => {
     return () => {
+      // Clear polling interval
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current)
+      }
+
+      // Delete retained point cloud data from server when component unmounts
+      if (retainedPointCloudRef.current) {
+        deletePointCloudFromServer().catch((error) => {
+          console.error("Failed to delete point cloud data:", error)
+        })
       }
     }
   }, [])
 
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0 bg-gray-50">
-        <CardTitle className="text-sm font-medium text-green-600">Digital Twin Display</CardTitle>
+      <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0 bg-gray-800">
+        <CardTitle className="text-sm font-medium text-green-400">Digital Twin Display</CardTitle>
         <div className="flex space-x-2">
           {/* Digital Twin Toggle Button */}
           <Button
             variant={isDigitalTwinOn ? "default" : "outline"}
             size="sm"
             onClick={handleDigitalTwinToggle}
-            className="h-7 px-3 text-xs"
+            className="h-7 px-3 text-xs bg-green-600 text-white hover:bg-green-700 border-green-600 hover:text-white"
           >
             {isDigitalTwinOn ? (
               <>
@@ -208,7 +296,9 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
             size="sm"
             onClick={handlePointCloudToggle}
             disabled={isLoading}
-            className={`h-7 px-3 text-xs ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`h-7 px-3 text-xs ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            } bg-green-600 text-white hover:bg-green-700`}
           >
             {isPointCloudGenerating ? (
               <>
@@ -222,19 +312,20 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
               </>
             )}
           </Button>
-
-          {/* Minimize Button */}
-          {/* <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsMinimized(!isMinimized)}>
-            <X className="h-4 w-4" />
-          </Button> */}
         </div>
       </CardHeader>
-      <CardContent className={`p-0 flex-1 ${isMinimized ? "hidden" : ""}`}>
+      <CardContent className="p-0 flex-1">
         <div className="bg-black h-full p-4 overflow-hidden">
           {!isDigitalTwinOn && (
             <div className="flex flex-col items-center justify-center h-full text-green-400 text-center">
               <p className="mb-2">Digital twin not displayed</p>
               <p className="text-xs text-gray-500">Click Digital Twin On to view 3D environment</p>
+              {retainedPointCloudRef.current && (
+                <p className="text-xs text-blue-400 mt-2">
+                  Retained data available ({(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()}{" "}
+                  points)
+                </p>
+              )}
             </div>
           )}
 
@@ -249,7 +340,7 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
                 <div className="h-full bg-gray-900 rounded relative">
                   {/* Status indicators */}
                   <div className="absolute top-2 left-2 z-10 text-xs text-cyan-400 bg-black bg-opacity-75 px-2 py-1 rounded">
-                    {isPointCloudGenerating ? "● SCANNING" : "○ IDLE"}
+                    {isPointCloudGenerating ? "● SCANNING" : pointCloudData ? "● RETAINED" : "○ IDLE"}
                   </div>
                   <div className="absolute top-2 right-2 z-10 text-xs text-green-400 bg-black bg-opacity-75 px-2 py-1 rounded">
                     3D VIEW
@@ -278,6 +369,7 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
                     <div className="absolute bottom-2 left-2 z-10 text-xs text-green-400 bg-black bg-opacity-75 px-2 py-1 rounded">
                       <p>Points: {(pointCloudData.vertices.length / 3).toLocaleString()}</p>
                       <p>Updated: {new Date(pointCloudData.timestamp).toLocaleTimeString()}</p>
+                      {!isPointCloudGenerating && <p className="text-blue-400">Status: Retained</p>}
                     </div>
                   )}
 
