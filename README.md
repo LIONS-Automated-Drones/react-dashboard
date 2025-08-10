@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project initially bootstrapped with [`cr
 
 Credits to Vercel, Shadcn, and Tailwind for facilitating the development of this project.
 
-Be sure to install Next.js, Tailwind, and Shadcn before cloning this repo locally. Then, yun the development server:
+Be sure to install Next.js, Tailwind, and Shadcn before cloning this repo locally. Then, run the development server:
 ```bash
 npm run dev
 ```

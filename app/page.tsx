@@ -51,7 +51,7 @@ export default function Dashboard() {
         />
 
         {/* Bottom-left: Chat interface - 50% width, 50% height */}
-        <ChatBox serverUrl="http://localhost:12691" onMessage={(msg) => addDashboardMessage(`Chat: ${msg}`)} />
+        <ChatBox serverUrl="ws://localhost:12345" onMessage={(msg) => addDashboardMessage(`Chat: ${msg}`)} />
 
         {/* Bottom-right: Status Box - 50% width, 50% height */}
         <StatusBox messages={dashboardMessages} onMessage={addDashboardMessage} />
