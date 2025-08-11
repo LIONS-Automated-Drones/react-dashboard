@@ -17,8 +17,7 @@ interface ChatMessage {
   sender: "user" | "server"
   content: string
   timestamp: Date
-  showTimestamp?: boolean
-  isComplete?: boolean
+  showTimestamp: boolean
 }
 
 export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: ChatBoxProps) {
@@ -32,7 +31,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
       content: "Welcome to the ARES Drone Control Dashboard!",
       timestamp: new Date(),
       showTimestamp: false,
-      isComplete: true,
     },
   ])
   const [isLoading, setIsLoading] = useState(false)
@@ -43,7 +41,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const maxReconnectAttempts = 5
-  const currentStreamingMessageRef = useRef<ChatMessage | null>(null)
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -106,7 +103,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         content: `URL Error: ${errorMsg}. Please check the server address format.`,
         timestamp: new Date(),
         showTimestamp: true,
-        isComplete: true,
       }
       setMessages((prev) => [...prev, errorChatMessage])
       return
@@ -129,7 +125,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
             content: `Connection timeout: Server at ${serverUrl} is not responding. Please check if the WebSocket server is running.`,
             timestamp: new Date(),
             showTimestamp: true,
-            isComplete: true,
           }
           setMessages((prev) => [...prev, timeoutMessage])
         }
@@ -149,7 +144,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
           content: `WebSocket connected to ${serverUrl}`,
           timestamp: new Date(),
           showTimestamp: true,
-          isComplete: true,
         }
         setMessages((prev) => [...prev, connectMessage])
       }
@@ -158,78 +152,22 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         try {
           const messageContent = event.data.toString()
           
-          // Check if this is the end of a streaming response
-          if (messageContent === "[END]" || messageContent === "Response complete") {
-            // Complete the current streaming message
-            if (currentStreamingMessageRef.current) {
-              setMessages((prev) => {
-                const updated = [...prev]
-                const lastMessage = updated[updated.length - 1]
-                if (lastMessage.sender === "server" && !lastMessage.isComplete) {
-                  lastMessage.showTimestamp = true
-                  lastMessage.isComplete = true
-                  lastMessage.timestamp = new Date()
-                }
-                return updated
-              })
-              currentStreamingMessageRef.current = null
-            }
-            setIsLoading(false)
-            onMessage("Server response complete")
-            return
+          // Create a complete server message
+          const serverMessage: ChatMessage = {
+            id: Date.now(),
+            sender: "server",
+            content: messageContent,
+            timestamp: new Date(),
+            showTimestamp: true,
           }
-
-          // Check if this is the start of a new message or continuation
-          if (currentStreamingMessageRef.current) {
-            // This is a continuation of a streaming message
-            setMessages((prev) => {
-              const updated = [...prev]
-              const lastMessage = updated[updated.length - 1]
-              if (lastMessage.sender === "server" && !lastMessage.isComplete) {
-                if (lastMessage.content) {
-                  lastMessage.content += "\n" + messageContent
-                } else {
-                  lastMessage.content = messageContent
-                }
-              }
-              return updated
-            })
-          } else {
-            // This is either a complete message or the start of a streaming message
-            const serverMessage: ChatMessage = {
-              id: Date.now(),
-              sender: "server",
-              content: messageContent,
-              timestamp: new Date(),
-              showTimestamp: false,
-              isComplete: false, // Assume streaming until we get [END]
-            }
-            
-            setMessages((prev) => [...prev, serverMessage])
-            currentStreamingMessageRef.current = serverMessage
-            
-            // If the message seems complete (no streaming expected), mark it as complete
-            // This is a heuristic - you might want to adjust based on your server behavior
-            if (messageContent.length < 100 && !messageContent.includes("...")) {
-              setTimeout(() => {
-                setMessages((prev) => {
-                  const updated = [...prev]
-                  const lastMessage = updated[updated.length - 1]
-                  if (lastMessage.sender === "server" && !lastMessage.isComplete) {
-                    lastMessage.showTimestamp = true
-                    lastMessage.isComplete = true
-                    lastMessage.timestamp = new Date()
-                  }
-                  return updated
-                })
-                currentStreamingMessageRef.current = null
-                setIsLoading(false)
-              }, 1000) // Wait 1 second to see if more content comes
-            }
-          }
+          
+          setMessages((prev) => [...prev, serverMessage])
+          setIsLoading(false)
+          onMessage("Server response received")
         } catch (error) {
           console.error('Error processing WebSocket message:', error)
           onMessage(`Error processing server message: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          setIsLoading(false)
         }
       }
 
@@ -237,7 +175,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         clearTimeout(connectionTimeout)
         setIsConnected(false)
         setIsLoading(false)
-        currentStreamingMessageRef.current = null
         
         let closeReason = "Unknown reason"
         if (event.code === 1000) closeReason = "Normal closure"
@@ -278,7 +215,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
             : `Connection lost: ${closeReason}. ${reconnectAttemptsRef.current < maxReconnectAttempts && event.code !== 1002 && event.code !== 1003 ? 'Attempting to reconnect...' : 'Please reconnect manually.'}`,
           timestamp: new Date(),
           showTimestamp: true,
-          isComplete: true,
         }
         setMessages((prev) => [...prev, disconnectMessage])
       }
@@ -307,6 +243,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         })
         
         setConnectionStatus("error")
+        setIsLoading(false)
         onMessage(`${errorMessage} - Check if server is running at ${serverUrl}`)
         
         // Add error message to chat
@@ -316,7 +253,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
           content: `Connection Error: ${errorMessage}. Please verify the server is running and accessible.`,
           timestamp: new Date(),
           showTimestamp: true,
-          isComplete: true,
         }
         setMessages((prev) => [...prev, errorChatMessage])
       }
@@ -332,7 +268,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         content: `Connection Error: ${errorMessage}`,
         timestamp: new Date(),
         showTimestamp: true,
-        isComplete: true,
       }
       setMessages((prev) => [...prev, errorChatMessage])
     }
@@ -354,7 +289,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     
     setIsConnected(false)
     setConnectionStatus("disconnected")
-    currentStreamingMessageRef.current = null
     onMessage("WebSocket disconnected")
   }
 
@@ -386,7 +320,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         content: "Error: Not connected to server. Please connect first.",
         timestamp: new Date(),
         showTimestamp: true,
-        isComplete: true,
       }
       setMessages((prev) => [...prev, errorMessage])
       return
@@ -398,7 +331,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
       content: input,
       timestamp: new Date(),
       showTimestamp: false,
-      isComplete: true,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -420,7 +352,6 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         content: `Error: Failed to send message - ${errorMsg}. Connection may be lost.`,
         timestamp: new Date(),
         showTimestamp: true,
-        isComplete: true,
       }
       setMessages((prev) => [...prev, errorMessage])
     }
