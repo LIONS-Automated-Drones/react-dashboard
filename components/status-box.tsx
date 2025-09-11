@@ -105,7 +105,7 @@ export default function StatusBox({ messages, onMessage }: StatusBoxProps) {
               <div key={index} className="mb-2 text-xs">
                 {" "}
                 {/* Reduced font size here */}
-                <span className="text-gray-400">[{message.timestamp.toLocaleTimeString()}]</span>{" "}
+                <span suppressHydrationWarning className="text-gray-400">[{message.timestamp.toLocaleTimeString()}]</span>{" "}
                 <span>{message.content}</span>
               </div>
             ))}
