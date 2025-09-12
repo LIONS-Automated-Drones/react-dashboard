@@ -1,3 +1,11 @@
+You will need these variables in your .env file. To figure
+out what IP to use for the lang graph url, open powershell
+and run `wsl hostname -I`.
+```bash
+NEXT_PUBLIC_ROS_STREAM_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_LANGGRAPH_URL=http://172.23.136.131:8000
+```
+
 This is a [Next.js](https://nextjs.org) project initially bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 Credits to Vercel, Shadcn, and Tailwind for facilitating the development of this project.
