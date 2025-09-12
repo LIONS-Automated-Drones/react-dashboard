@@ -15,7 +15,7 @@ type Props = {
 
 export default function RosCameraStream({
   baseUrl = process.env.NEXT_PUBLIC_ROS_STREAM_BASE_URL || 'http://localhost:8080',
-  topic = process.env.NEXT_PUBLIC_ROS_IMAGE_TOPIC || '/stereo/right',
+  topic = '/stereo/right',
   className = 'w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow'
 }: Props) {
   const [reloadKey, setReloadKey] = useState(0);
