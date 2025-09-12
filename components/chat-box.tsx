@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Plug, PlugZap } from 'lucide-react'
+import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
 
 interface ChatBoxProps {
   serverUrl: string
-  onMessage: (message: string) => void
 }
 
 interface ChatMessage {
@@ -20,7 +20,8 @@ interface ChatMessage {
   showTimestamp: boolean
 }
 
-export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: ChatBoxProps) {
+export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
+  const { addMessage } = useDashboardMessages()
   const [input, setInput] = useState("")
   const [serverUrl, setServerUrl] = useState(initialServerUrl)
   const [isEditingServer, setIsEditingServer] = useState(false)
@@ -57,11 +58,11 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     try {
       const url = new URL(httpUrl)
       const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-      return `${protocol}//${url.host}/ws`
+      return `${protocol}//${url.host}`
     } catch (error) {
       // Fallback for relative URLs or malformed URLs
       const cleanUrl = httpUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
-      return `ws://${cleanUrl}/ws`
+      return `ws://${cleanUrl}`
     }
   }
 
@@ -74,7 +75,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     // Validate server URL
     if (!serverUrl || serverUrl.trim() === '') {
       setConnectionStatus("error")
-      onMessage("Invalid server URL - please enter a valid server address")
+      addMessage("Invalid server URL - please enter a valid server address")
       return
     }
 
@@ -85,7 +86,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     }
 
     setConnectionStatus("connecting")
-    onMessage(`Attempting WebSocket connection to ${serverUrl}`)
+    addMessage(`Attempting WebSocket connection to ${serverUrl}`)
 
     const wsUrl = getWebSocketUrl(serverUrl)
     
@@ -95,7 +96,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     } catch (urlError) {
       setConnectionStatus("error")
       const errorMsg = `Invalid WebSocket URL: ${wsUrl}`
-      onMessage(errorMsg)
+      addMessage(errorMsg)
       
       const errorChatMessage: ChatMessage = {
         id: Date.now(),
@@ -117,7 +118,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         if (ws.readyState === WebSocket.CONNECTING) {
           ws.close()
           setConnectionStatus("error")
-          onMessage(`Connection timeout - WebSocket server not responding at ${wsUrl}`)
+          addMessage(`Connection timeout - WebSocket server not responding at ${wsUrl}`)
           
           const timeoutMessage: ChatMessage = {
             id: Date.now(),
@@ -135,7 +136,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         setIsConnected(true)
         setConnectionStatus("connected")
         reconnectAttemptsRef.current = 0
-        onMessage(`WebSocket connected to ${wsUrl}`)
+        addMessage(`WebSocket connected to ${wsUrl}`)
 
         // Add connection success message to chat
         const connectMessage: ChatMessage = {
@@ -151,8 +152,14 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
       ws.onmessage = (event) => {
         try {
           const messageContent = event.data.toString()
-          
-          // Create a complete server message
+          if (messageContent.includes("SYSTEM NOTE")) {
+            return;
+          }
+          if (messageContent.startsWith("[INFO]")) {
+            let trimmed = messageContent.substring(6).trim()
+            addMessage(trimmed)
+            return
+          }
           const serverMessage: ChatMessage = {
             id: Date.now(),
             sender: "server",
@@ -163,10 +170,9 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
           
           setMessages((prev) => [...prev, serverMessage])
           setIsLoading(false)
-          onMessage("Server response received")
         } catch (error) {
           console.error('Error processing WebSocket message:', error)
-          onMessage(`Error processing server message: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          addMessage(`Error processing server message: ${error instanceof Error ? error.message : 'Unknown error'}`)
           setIsLoading(false)
         }
       }
@@ -187,22 +193,22 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         
         if (event.wasClean) {
           setConnectionStatus("disconnected")
-          onMessage(`WebSocket connection closed cleanly: ${closeReason} (code: ${event.code})`)
+          addMessage(`WebSocket connection closed cleanly: ${closeReason} (code: ${event.code})`)
         } else {
           setConnectionStatus("error")
-          onMessage(`WebSocket connection lost: ${closeReason} (code: ${event.code})`)
+          addMessage(`WebSocket connection lost: ${closeReason} (code: ${event.code})`)
           
           // Attempt to reconnect if not manually disconnected and not a permanent error
           if (reconnectAttemptsRef.current < maxReconnectAttempts && event.code !== 1002 && event.code !== 1003) {
             reconnectAttemptsRef.current++
             const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current - 1), 10000)
-            onMessage(`Attempting to reconnect in ${delay / 1000} seconds... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`)
+            addMessage(`Attempting to reconnect in ${delay / 1000} seconds... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`)
             
             reconnectTimeoutRef.current = setTimeout(() => {
               connectWebSocket()
             }, delay)
           } else {
-            onMessage("Maximum reconnection attempts reached or permanent error. Please reconnect manually.")
+            addMessage("Maximum reconnection attempts reached or permanent error. Please reconnect manually.")
           }
         }
 
@@ -244,7 +250,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
         
         setConnectionStatus("error")
         setIsLoading(false)
-        onMessage(`${errorMessage} - Check if server is running at ${serverUrl}`)
+        addMessage(`${errorMessage} - Check if server is running at ${serverUrl}`)
         
         // Add error message to chat
         const errorChatMessage: ChatMessage = {
@@ -260,7 +266,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     } catch (error) {
       setConnectionStatus("error")
       const errorMessage = `Failed to create WebSocket connection: ${error instanceof Error ? error.message : 'Unknown error'}`
-      onMessage(errorMessage)
+      addMessage(errorMessage)
       
       const errorChatMessage: ChatMessage = {
         id: Date.now(),
@@ -289,7 +295,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     
     setIsConnected(false)
     setConnectionStatus("disconnected")
-    onMessage("WebSocket disconnected")
+    addMessage("WebSocket disconnected")
   }
 
   const handleConnect = () => {
@@ -305,7 +311,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     setServerUrl(newUrl)
     if (isConnected) {
       disconnectWebSocket()
-      onMessage("Disconnected due to server URL change")
+      addMessage("Disconnected due to server URL change")
     }
   }
 
@@ -313,7 +319,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     if (!input.trim()) return
 
     if (!isConnected || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      onMessage("Cannot send message - WebSocket not connected")
+      addMessage("Cannot send message - WebSocket not connected")
       const errorMessage: ChatMessage = {
         id: Date.now(),
         sender: "server",
@@ -334,7 +340,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     }
 
     setMessages((prev) => [...prev, userMessage])
-    onMessage(`User sent: ${input}`)
+    addMessage(`User sent: ${input}`)
     
     // Send message as plain string through WebSocket
     try {
@@ -343,7 +349,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
       setIsLoading(true)
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-      onMessage(`Failed to send message: ${errorMsg}`)
+      addMessage(`Failed to send message: ${errorMsg}`)
       setIsLoading(false)
       
       const errorMessage: ChatMessage = {
@@ -399,7 +405,7 @@ export default function ChatBox({ serverUrl: initialServerUrl, onMessage }: Chat
     <Card className="flex flex-col h-full">
       <CardHeader className="p-3 bg-gray-800">
         <div className="flex items-center justify-between space-x-4">
-          <CardTitle className="text-sm font-medium text-green-400 flex-shrink-0">Agentic AI Chat Interface</CardTitle>
+          <CardTitle className="text-sm font-medium text-green-400 flex-shrink-0">Chat Interface</CardTitle>
           <div className="flex items-center space-x-4 flex-grow justify-end">
             <span className="text-xs text-gray-400 flex-shrink-0">Server:</span>
             {isEditingServer ? (

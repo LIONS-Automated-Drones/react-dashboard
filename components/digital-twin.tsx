@@ -7,11 +7,11 @@ import { Canvas } from "@react-three/fiber"
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei"
 import { Eye, EyeOff, Scan, ScanLine } from "lucide-react"
 import * as THREE from "three"
+import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
 
 interface DigitalTwinProps {
   title: string
   videoId: string
-  onMessage: (message: string) => void
 }
 
 interface PointCloudData {
@@ -61,7 +61,8 @@ function LoadingSpinner() {
   )
 }
 
-export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinProps) {
+export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
+  const { addMessage } = useDashboardMessages()
   const [isDigitalTwinOn, setIsDigitalTwinOn] = useState(false)
   const [isPointCloudGenerating, setIsPointCloudGenerating] = useState(false)
   const [pointCloudData, setPointCloudData] = useState<PointCloudData | null>(null)
@@ -151,7 +152,7 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
 
     // Simulate saving to server
     await new Promise((resolve) => setTimeout(resolve, 200))
-    onMessage(`Point cloud data saved to server (${(data.vertices.length / 3).toLocaleString()} points)`)
+    addMessage(`Point cloud data saved to server (${(data.vertices.length / 3).toLocaleString()} points)`)
   }
 
   // Delete point cloud data from server (simulated)
@@ -161,7 +162,7 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
 
     // Simulate deleting from server
     await new Promise((resolve) => setTimeout(resolve, 100))
-    onMessage("Point cloud data deleted from server")
+    addMessage("Point cloud data deleted from server")
   }
 
   const handleDigitalTwinToggle = () => {
@@ -169,16 +170,16 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
     setIsDigitalTwinOn(newState)
 
     if (newState) {
-      onMessage(`Digital twin display enabled for ${title}`)
+      addMessage(`Digital twin display enabled for ${title}`)
       // If we have retained data and not currently generating, show the retained data
       if (retainedPointCloudRef.current && !isPointCloudGenerating) {
         setPointCloudData(retainedPointCloudRef.current)
-        onMessage(
+        addMessage(
           `Displaying retained point cloud data (${(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()} points)`,
         )
       }
     } else {
-      onMessage(`Digital twin display disabled for ${title}`)
+      addMessage(`Digital twin display disabled for ${title}`)
     }
   }
 
@@ -187,14 +188,14 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
     setIsPointCloudGenerating(newState)
 
     if (newState) {
-      onMessage(`Point cloud generation started for ${title}`)
+      addMessage(`Point cloud generation started for ${title}`)
       setIsLoading(true)
 
       try {
         // If we have retained data, start with that
         if (retainedPointCloudRef.current) {
           setPointCloudData(retainedPointCloudRef.current)
-          onMessage(
+          addMessage(
             `Resuming from retained point cloud data (${(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()} points)`,
           )
         } else {
@@ -202,7 +203,7 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
           const initialData = await fetchPointCloudData()
           setPointCloudData(initialData)
           retainedPointCloudRef.current = initialData
-          onMessage(`Point cloud data received - ${(initialData.vertices.length / 3).toLocaleString()} points`)
+          addMessage(`Point cloud data received - ${(initialData.vertices.length / 3).toLocaleString()} points`)
         }
 
         // Start periodic polling every 5 seconds
@@ -213,19 +214,19 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
             retainedPointCloudRef.current = newData // Update retained data
             const totalPoints = newData.vertices.length / 3
             const newPoints = 1000 // Since we know we add 1000 points each time
-            onMessage(`Point cloud updated - ${totalPoints.toLocaleString()} total points (+${newPoints} new)`)
+            addMessage(`Point cloud updated - ${totalPoints.toLocaleString()} total points (+${newPoints} new)`)
           } catch (error) {
-            onMessage(`Point cloud update failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+            addMessage(`Point cloud update failed: ${error instanceof Error ? error.message : "Unknown error"}`)
           }
         }, 5000)
       } catch (error) {
-        onMessage(`Point cloud generation failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+        addMessage(`Point cloud generation failed: ${error instanceof Error ? error.message : "Unknown error"}`)
         setIsPointCloudGenerating(false)
       } finally {
         setIsLoading(false)
       }
     } else {
-      onMessage(`Point cloud generation stopped for ${title}`)
+      addMessage(`Point cloud generation stopped for ${title}`)
 
       // Clear polling interval but retain the data
       if (pollingIntervalRef.current) {
@@ -238,9 +239,9 @@ export default function DigitalTwin({ title, videoId, onMessage }: DigitalTwinPr
         try {
           await savePointCloudToServer(pointCloudData)
           retainedPointCloudRef.current = pointCloudData // Ensure we retain the data
-          onMessage("Point cloud data retained for session")
+          addMessage("Point cloud data retained for session")
         } catch (error) {
-          onMessage(`Failed to save point cloud data: ${error instanceof Error ? error.message : "Unknown error"}`)
+          addMessage(`Failed to save point cloud data: ${error instanceof Error ? error.message : "Unknown error"}`)
         }
       }
 

@@ -5,16 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Battery, Wifi, Shield, ShieldCheck } from "lucide-react"
+import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
 
 // Define the type for dashboard messages to include a timestamp
 interface DashboardMessage {
   content: string
   timestamp: Date
-}
-
-interface StatusBoxProps {
-  messages: DashboardMessage[]
-  onMessage: (message: string) => void
 }
 
 interface DroneTelemetry {
@@ -25,7 +21,8 @@ interface DroneTelemetry {
   signalStrength: number
 }
 
-export default function StatusBox({ messages, onMessage }: StatusBoxProps) {
+export default function StatusBox() {
+  const { messages, addMessage } = useDashboardMessages()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const [manualOverride, setManualOverride] = useState(false)
   const [telemetry, setTelemetry] = useState<DroneTelemetry>({
@@ -66,7 +63,7 @@ export default function StatusBox({ messages, onMessage }: StatusBoxProps) {
   const handleManualOverride = () => {
     const newOverrideState = !manualOverride
     setManualOverride(newOverrideState)
-    onMessage(`Manual Override ${newOverrideState ? "ENABLED" : "DISABLED"}`)
+    addMessage(`Manual Override ${newOverrideState ? "ENABLED" : "DISABLED"}`)
 
     // Update drone armed status based on manual override
     setTelemetry((prev) => ({
@@ -75,9 +72,9 @@ export default function StatusBox({ messages, onMessage }: StatusBoxProps) {
     }))
 
     if (newOverrideState) {
-      onMessage("Drone armed - Manual control active")
+      addMessage("Drone armed - Manual control active")
     } else {
-      onMessage("Drone disarmed - Returning to autonomous mode")
+      addMessage("Drone disarmed - Returning to autonomous mode")
     }
   }
 

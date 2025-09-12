@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plug, PlugZap, Video, VideoOff } from "lucide-react"
+import { Plug, PlugZap, Video, VideoOff, ChevronLeft, ChevronRight } from "lucide-react"
 import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
 
 // ⬇️ import your stream component
@@ -17,6 +17,8 @@ interface VideoFeedProps {
 export default function VideoFeed({ title, executablePath }: VideoFeedProps) {
   const { addMessage } = useDashboardMessages()
   const [isVideoFeedOn, setIsVideoFeedOn] = useState(false)
+  const [isLeftCamera, setIsLeftCamera] = useState(false) // false = right, true = left
+  
   const handleVideoFeedToggle = () => {
     const newVideoState = !isVideoFeedOn
     setIsVideoFeedOn(newVideoState)
@@ -28,6 +30,46 @@ export default function VideoFeed({ title, executablePath }: VideoFeedProps) {
       <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0 bg-gray-800">
         <CardTitle className="text-sm font-medium text-green-400">Live Drone Video Feed</CardTitle>
         <div className="flex space-x-2">
+          {/* Camera Selection Button Group */}
+          <div className="flex">
+          <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!isLeftCamera) {
+                  setIsLeftCamera(true)
+                  addMessage("Switched to Left camera")
+                }
+              }}
+              disabled={isLeftCamera}
+              className={`h-7 px-2 text-xs rounded-r-none ${
+                isLeftCamera 
+                  ? "bg-blue-600 text-white border-blue-600" 
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600 hover:text-white"
+              }`}
+            >
+              Left
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (isLeftCamera) {
+                  setIsLeftCamera(false)
+                  addMessage("Switched to Right camera")
+                }
+              }}
+              disabled={!isLeftCamera}
+              className={`h-7 px-2 text-xs rounded-l-none border-r-0 ${
+                !isLeftCamera 
+                  ? "bg-blue-600 text-white border-blue-600" 
+                  : "bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600 hover:text-white"
+              }`}
+            >
+              Right
+            </Button>
+          </div>
+          
           <Button
             variant={isVideoFeedOn ? "default" : "outline"}
             size="sm"
@@ -69,6 +111,7 @@ export default function VideoFeed({ title, executablePath }: VideoFeedProps) {
               </div>
 
               <RosVideoStream
+                topic={isLeftCamera ? "/stereo/left" : "/stereo/right"}
                 className="w-full h-full object-contain"
               />
             </>
