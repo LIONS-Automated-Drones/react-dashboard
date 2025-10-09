@@ -21,7 +21,7 @@ interface ChatMessage {
 }
 
 export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
-  const { addMessage } = useDashboardMessages()
+  const { addMessage, setTelemetry } = useDashboardMessages()
   const [input, setInput] = useState("")
   const [serverUrl, setServerUrl] = useState(initialServerUrl)
   const [isEditingServer, setIsEditingServer] = useState(false)
@@ -151,6 +151,15 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
 
       ws.onmessage = (event) => {
         try {
+          try {
+            const parsed = JSON.parse(event.data.toString());
+            if (parsed.type === "telemetry") {
+              setTelemetry(parsed);
+              return; // Don't add telemetry to messages
+            }
+          } catch {
+            // Not JSON, continue with normal message handling
+          }
           const messageContent = event.data.toString()
           if (messageContent.includes("SYSTEM NOTE")) {
             return;

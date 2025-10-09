@@ -8,9 +8,32 @@ export interface DashboardMessage {
   timestamp: Date;
 }
 
+// Define the telemetry data structure
+export interface TelemetryData {
+  type: string;
+  timestamp: number;
+  armed: boolean;
+  flight_mode: string;
+  battery_percent: number;
+  gps_fix_type: string;
+  gps_satellites: number;
+  health_all_ok: boolean;
+  position_relative: {
+    x_m: number;
+    y_m: number;
+    z_m: number;
+  };
+  altitude_m: number;
+  velocity_ms: number;
+  heading_deg: number;
+  is_in_air: boolean;
+}
+
 interface DashboardMessagesContextType {
   messages: DashboardMessage[];
   addMessage: (content: string) => void;
+  telemetry: TelemetryData | null;
+  setTelemetry: (data: TelemetryData) => void;
 }
 
 const DashboardMessagesContext = createContext<DashboardMessagesContextType | undefined>(undefined);
@@ -20,6 +43,8 @@ export const DashboardMessagesProvider = ({ children }: { children: ReactNode })
     { content: "Dashboard initialized", timestamp: new Date() },
     { content: "Waiting for user interaction...", timestamp: new Date() },
   ]);
+  
+  const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
 
   const addMessage = (content: string) => {
     // This logic to filter messages seems important from page.tsx
@@ -34,7 +59,7 @@ export const DashboardMessagesProvider = ({ children }: { children: ReactNode })
   };
 
   return (
-    <DashboardMessagesContext.Provider value={{ messages, addMessage }}>
+    <DashboardMessagesContext.Provider value={{ messages, addMessage, telemetry, setTelemetry }}>
       {children}
     </DashboardMessagesContext.Provider>
   );
