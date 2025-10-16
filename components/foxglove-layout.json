@@ -1,0 +1,182 @@
+{
+    "configById": {
+      "3D!41o3hnk": {
+        "cameraState": {
+          "perspective": true,
+          "distance": 16.29012499998944,
+          "phi": 71.86648796554566,
+          "thetaOffset": 87.90298679552399,
+          "targetOffset": [
+            2.0467931936122894,
+            -0.5607664147952258,
+            4.4156898834993245e-17
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "targetOrientation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "fovy": 45,
+          "near": 0.5,
+          "far": 5000
+        },
+        "followMode": "follow-pose",
+        "followTf": "map",
+        "scene": {
+          "enableStats": false,
+          "syncCamera": false
+        },
+        "transforms": {},
+        "topics": {
+          "/cloud_ground": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/cloud_map": {
+            "visible": true,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo",
+            "pointSize": 1,
+            "pointShape": "circle",
+            "stixelsEnabled": false
+          },
+          "/cloud_obstacles": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/local_grid_empty": {
+            "visible": false
+          },
+          "/local_grid_ground": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/local_grid_obstacle": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/localization_pose": {
+            "visible": false
+          },
+          "/map": {
+            "visible": false
+          },
+          "/octomap_empty_space": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/octomap_global_frontier_space": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/octomap_grid": {
+            "visible": false
+          },
+          "/octomap_obstacles": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/octomap_ground": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/octomap_occupied_space": {
+            "visible": false,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/points2": {
+            "visible": true,
+            "colorField": "rgb",
+            "colorMode": "rgb",
+            "colorMap": "turbo"
+          },
+          "/right/image_rect": {
+            "visible": false
+          },
+          "/stereo/camera_info": {
+            "visible": false
+          },
+          "/stereo/left": {
+            "visible": false
+          },
+          "/stereo/left/camera_info": {
+            "visible": false
+          },
+          "/global_path": {
+            "visible": false
+          },
+          "/local_path": {
+            "visible": false
+          },
+          "/mapPath": {
+            "visible": false
+          }
+        },
+        "layers": {
+          "grid": {
+            "visible": true,
+            "drawBehind": false,
+            "frameLocked": true,
+            "label": "Grid",
+            "instanceId": "91e73725-4e8c-4632-89e4-96b6cb4b7bc2",
+            "layerId": "foxglove.Grid",
+            "size": 22.168,
+            "divisions": 10,
+            "lineWidth": 1,
+            "color": "#248eff",
+            "position": [
+              0,
+              0,
+              -2.504
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "publish": {
+          "type": "point",
+          "poseTopic": "/move_base_simple/goal",
+          "pointTopic": "/clicked_point",
+          "poseEstimateTopic": "/initialpose",
+          "poseEstimateXDeviation": 0.5,
+          "poseEstimateYDeviation": 0.5,
+          "poseEstimateThetaDeviation": 0.26179939
+        },
+        "imageMode": {}
+      }
+    },
+    "globalVariables": {},
+    "userNodes": {},
+    "playbackConfig": {
+      "speed": 1
+    },
+    "layout": "3D!41o3hnk"
+  }

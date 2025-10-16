@@ -1,7 +1,7 @@
 "use client"
 
 import VideoFeed from "@/components/video-feed"
-import DigitalTwin from "@/components/digital-twin"
+import TwinViewer from "@/components/foxglove-twin-viewer"
 import ChatBox from "@/components/chat-box"
 import StatusBox from "@/components/status-box"
 import { DashboardMessagesProvider } from "@/contexts/DashboardMessagesContext"
@@ -20,7 +20,7 @@ function DashboardContent() {
         <VideoFeed title="Live Drone Video Feed" executablePath="test1.exe" />
 
         {/* Top-right: Digital Twin Display - 50% width, 50% height */}
-        <DigitalTwin title="Digital Twin Display" videoId="dQw4w9WgXcQ" />
+        <TwinViewer />
 
         {/* Bottom-left: Chat interface - 50% width, 50% height */}
         <ChatBox serverUrl={langGraphUrl} />
