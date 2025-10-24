@@ -8,7 +8,7 @@ import { Battery, Wifi, Shield, ShieldCheck } from "lucide-react"
 import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
 
 export default function StatusBox() {
-  const { messages, addMessage, telemetry } = useDashboardMessages()
+  const { messages, addMessage, telemetry, sendWebSocketMessage } = useDashboardMessages()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const [manualOverride, setManualOverride] = useState(false)
 
@@ -33,8 +33,16 @@ export default function StatusBox() {
 
 
     if (newOverrideState) {
+      const sent = sendWebSocketMessage("cancel")
+      if (sent) {
+        addMessage("Sent 'cancel' command to server")
+      }
       addMessage("Drone armed - Manual control active")
     } else {
+      const sent = sendWebSocketMessage("restart")
+      if (sent) {
+        addMessage("Sent 'restart' command to server")
+      }
       addMessage("Drone disarmed - Returning to autonomous mode")
     }
   }
