@@ -17,7 +17,8 @@ interface DigitalTwinProps {
 
 interface PointCloudData {
   vertices: Float32Array
-  colors: Float32Array
+  // ✅ accept either; live stream could be bytes (0..255) or floats (0..1 or 0..255)
+  colors: Float32Array | Uint8Array
   timestamp: number
 }
 
@@ -56,33 +57,75 @@ function PointCloud({ data }: { data: PointCloudData | null }) {
   const meshRef = useRef<THREE.Points>(null)
 
   useEffect(() => {
-    if (meshRef.current && data) {
-      const geometry = new THREE.BufferGeometry()
-      geometry.setAttribute("position", new THREE.BufferAttribute(data.vertices, 3))
-      geometry.setAttribute("color", new THREE.BufferAttribute(data.colors, 3))
+    if (!meshRef.current) return
 
-      meshRef.current.geometry = geometry
+    // dispose previous geometry if we’re about to replace it
+    if (meshRef.current.geometry) {
+      meshRef.current.geometry.dispose()
+      meshRef.current.geometry = new THREE.BufferGeometry()
+    }
+
+    if (!data) {
+      // show a placeholder cube when empty
+      const g = new THREE.BoxGeometry(2, 2, 2)
+      const m = new THREE.MeshStandardMaterial({ color: "gray", wireframe: true })
+      // Render a mesh inside a <points> is invalid; fall back to no-geometry on points
+      // We simply leave the <points> empty; the outer placeholder is handled in JSX below
+      g.dispose()
+      m.dispose()
+      return
+    }
+
+    const { vertices, colors } = data
+    const geom = new THREE.BufferGeometry()
+
+    // positions
+    geom.setAttribute("position", new THREE.BufferAttribute(vertices, 3))
+
+    // colors (optional but preferred)
+    if (colors && colors.length === vertices.length) {
+      if (colors instanceof Uint8Array) {
+        // bytes 0..255 — we can mark the attribute as normalized
+        const attr = new THREE.BufferAttribute(colors, 3, true) // normalized = true
+        geom.setAttribute("color", attr)
+      } else {
+        // Float32Array — could be 0..1 (good) or 0..255 (normalize)
+        let needsDivide = false
+        for (let i = 0; i < Math.min(colors.length, 90); i++) {
+          if (colors[i] > 1.0) { needsDivide = true; break }
+        }
+        if (needsDivide) {
+          const scaled = new Float32Array(colors.length)
+          for (let i = 0; i < colors.length; i++) scaled[i] = colors[i] / 255
+          geom.setAttribute("color", new THREE.BufferAttribute(scaled, 3))
+        } else {
+          geom.setAttribute("color", new THREE.BufferAttribute(colors, 3))
+        }
+      }
+    } // else: skip color attribute so we still render positions
+
+    meshRef.current.geometry = geom
+
+    return () => {
+      geom.dispose()
     }
   }, [data])
 
   if (!data) {
     return (
-      <mesh>
-        <boxGeometry args={[2, 2, 2]} />
-        <meshStandardMaterial color="gray" wireframe />
-      </mesh>
+      <group>
+        <mesh>
+          <boxGeometry args={[2, 2, 2]} />
+          <meshStandardMaterial color="gray" wireframe />
+        </mesh>
+      </group>
     )
   }
 
   return (
     <points ref={meshRef}>
-      <bufferGeometry />
-      <pointsMaterial 
-        size={0.05} 
-        vertexColors 
-        toneMapped={false}
-        sizeAttenuation={true}
-      />
+      {/* geometry + attributes are assigned imperatively */}
+      <pointsMaterial size={0.05} vertexColors toneMapped={false} sizeAttenuation />
     </points>
   )
 }
@@ -128,9 +171,7 @@ function PoseIndicator({ data }: { data: PoseData | null }) {
     }
   }, [data])
 
-  if (!data) {
-    return null
-  }
+  if (!data) return null
 
   // Extract position uncertainty from covariance matrix
   // Covariance is a 6x6 matrix (36 elements), diagonal elements are variances
@@ -162,20 +203,12 @@ function PoseIndicator({ data }: { data: PoseData | null }) {
         {/* Arrow shaft */}
         <mesh position={[0.4, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.04, 0.04, 0.8, 8]} />
-          <meshStandardMaterial 
-            color="#ff0000"
-            emissive="#ff0000"
-            emissiveIntensity={0.5}
-          />
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.5} />
         </mesh>
         {/* Arrow head */}
         <mesh position={[0.8, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
           <coneGeometry args={[0.12, 0.25, 8]} />
-          <meshStandardMaterial 
-            color="#ff0000"
-            emissive="#ff0000"
-            emissiveIntensity={0.5}
-          />
+          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.5} />
         </mesh>
       </group>
     </group>
@@ -193,7 +226,7 @@ function LoadingSpinner() {
 }
 
 const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function DigitalTwin(
-  { title, videoId },
+  { title },
   ref
 ) {
   const { addMessage } = useDashboardMessages()
@@ -209,43 +242,32 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
   // WebSocket connection
   const wsRef = useRef<WebSocket | null>(null)
   const [wsConnected, setWsConnected] = useState(false)
-  const linuxIp = process.env.NEXT_PUBLIC_LINUX_IP
-  if (!linuxIp) {
-    throw new Error("NEXT_PUBLIC_LINUX_IP is not set")
-  }
 
-  // EXPOSE: make the current twin data available to a Save button via ref
-  useImperativeHandle(ref, () => ({
-    getDigitalTwinData: () => ({
-      pointCloudData,
-      pathData,
-      poseData,
+  const linuxIp = process.env.NEXT_PUBLIC_LINUX_IP
+  if (!linuxIp) throw new Error("NEXT_PUBLIC_LINUX_IP is not set")
+
+  // expose data for SaveSnapshotButton
+  useImperativeHandle(
+    ref,
+    () => ({
+      getDigitalTwinData: () => ({
+        pointCloudData,
+        pathData,
+        poseData,
+      }),
     }),
-  }), [pointCloudData, pathData, poseData])
+    [pointCloudData, pathData, poseData]
+  )
 
   // WebSocket connection management
   const connectWebSocket = () => {
     try {
-      console.log(`Attempting to connect to WebSocket at ws://${linuxIp}:9000`)
       const wsUrl = `ws://${linuxIp}:9000`
-      try {
-        new URL(wsUrl) // This will throw if the URL is invalid
-      } catch (urlError) {
-        addMessage(`Invalid WebSocket URL: ${wsUrl}`)
-        return
-      }
+      try { new URL(wsUrl) } catch { addMessage(`Invalid WebSocket URL: ${wsUrl}`); return }
       const ws = new WebSocket(wsUrl)
-      console.log("WebSocket object created, readyState:", ws.readyState, "(0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)")
 
       ws.onopen = () => {
         addMessage("WebSocket connected to point cloud bridge")
-        console.log("WebSocket opened successfully:", {
-          readyState: ws.readyState,
-          url: ws.url,
-          protocol: ws.protocol,
-          extensions: ws.extensions,
-          timestamp: new Date().toISOString()
-        })
         setWsConnected(true)
         setIsLoading(false)
       }
@@ -257,43 +279,54 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
           // Handle point cloud data
           if (data.pointcloud) {
             const vertices = new Float32Array(data.pointcloud.vertices)
-            const colors = new Float32Array(data.pointcloud.colors)
 
-            const pointCloudData: PointCloudData = {
-              vertices,
-              colors,
-              timestamp: data.pointcloud.timestamp * 1000, // Convert to milliseconds
+            // Accept colors as bytes or floats
+            let colors: Uint8Array | Float32Array = new Float32Array(vertices.length)
+            if (data.pointcloud.colors) {
+              const arr = data.pointcloud.colors as number[] | ArrayLike<number>
+              // If any sample > 1, treat as 0..255 bytes; otherwise assume 0..1 floats
+              let hasOverOne = false
+              for (let i = 0; i < Math.min(arr.length, 90); i++) {
+                if (arr[i] > 1) { hasOverOne = true; break }
+              }
+              colors = hasOverOne ? new Uint8Array(arr as ArrayLike<number>) : new Float32Array(arr as ArrayLike<number>)
             }
 
-            setPointCloudData(pointCloudData)
-            retainedPointCloudRef.current = pointCloudData
+            const pc: PointCloudData = {
+              vertices,
+              colors,
+              timestamp: (data.pointcloud.timestamp ?? Date.now() / 1000) * 1000,
+            }
+            setPointCloudData(pc)
+            retainedPointCloudRef.current = pc
+
+            const numPoints = data.pointcloud.num_points || vertices.length / 3
+            addMessage(`Point cloud updated - ${numPoints.toLocaleString()} points from ${data.pointcloud.frame_id || "sensor"}`)
           }
 
           // Handle pose data
           if (data.pose) {
-            const poseData: PoseData = {
+            const p: PoseData = {
               position: data.pose.position,
               orientation: data.pose.orientation,
               covariance: data.pose.covariance,
               timestamp: data.pose.timestamp * 1000,
               frame_id: data.pose.frame_id
             }
-
-            setPoseData(poseData)
-            retainedPoseRef.current = poseData
+            setPoseData(p)
+            retainedPoseRef.current = p
           }
 
           // Handle path data
           if (data.path) {
-            const pathData: PathData = {
+            const path: PathData = {
               poses: data.path.poses,
               timestamp: data.path.timestamp * 1000,
               frame_id: data.path.frame_id,
               num_poses: data.path.num_poses
             }
-
-            setPathData(pathData)
-            retainedPathRef.current = pathData
+            setPathData(path)
+            retainedPathRef.current = path
           }
         } catch (error) {
           addMessage(`Error parsing data: ${error instanceof Error ? error.message : "Unknown error"}`)
@@ -303,44 +336,11 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
       ws.onerror = (error) => {
         addMessage("WebSocket error - Make sure the Python bridge is running")
         console.error("WebSocket error details:", error)
-        console.error("WebSocket error event:", {
-          type: (error as any).type,
-          target: (error as any).target,
-          currentTarget: (error as any).currentTarget
-        })
         setWsConnected(false)
       }
 
       ws.onclose = (event) => {
-        const reason = event.reason || "No reason provided"
-        const code = event.code
-        const wasClean = event.wasClean
-        
-        addMessage(`WebSocket disconnected - Code: ${code}, Clean: ${wasClean}, Reason: ${reason}`)
-        console.log("WebSocket close event details:", {
-          code: code,
-          reason: reason,
-          wasClean: wasClean,
-          timestamp: new Date().toISOString()
-        })
-        
-        // Common close codes:
-        // 1000 - Normal closure
-        // 1001 - Going away (e.g., server shutting down)
-        // 1002 - Protocol error
-        // 1003 - Unsupported data
-        // 1006 - Abnormal closure (no close frame)
-        // 1011 - Server error
-        console.log("Close code meaning:", 
-          code === 1000 ? "Normal closure" :
-          code === 1001 ? "Going away" :
-          code === 1002 ? "Protocol error" :
-          code === 1003 ? "Unsupported data" :
-          code === 1006 ? "Abnormal closure (connection lost)" :
-          code === 1011 ? "Server error" :
-          `Unknown code: ${code}`
-        )
-        
+        addMessage(`WebSocket disconnected - Code: ${event.code}, Clean: ${event.wasClean}, Reason: ${event.reason || "No reason provided"}`)
         setWsConnected(false)
         wsRef.current = null
       }
@@ -372,9 +372,7 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
       // If we have retained data, show it immediately
       if (retainedPointCloudRef.current) {
         setPointCloudData(retainedPointCloudRef.current)
-        addMessage(
-          `Displaying retained point cloud data (${(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()} points)`,
-        )
+        addMessage(`Displaying retained point cloud data (${(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()} points)`)
       }
       if (retainedPoseRef.current) {
         setPoseData(retainedPoseRef.current)
@@ -394,28 +392,16 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
       // Disconnect WebSocket
       disconnectWebSocket()
 
-      // Retain the current data
-      if (pointCloudData) {
-        retainedPointCloudRef.current = pointCloudData
-      }
-      if (poseData) {
-        retainedPoseRef.current = poseData
-      }
-      if (pathData) {
-        retainedPathRef.current = pathData
-      }
-      if (pointCloudData || poseData || pathData) {
-        addMessage("Data retained for session")
-      }
+      // retain current
+      if (pointCloudData) retainedPointCloudRef.current = pointCloudData
+      if (poseData) retainedPoseRef.current = poseData
+      if (pathData) retainedPathRef.current = pathData
+      if (pointCloudData || poseData || pathData) addMessage("Data retained for session")
     }
   }
 
-  // Cleanup on unmount - this is when the dashboard closes
   useEffect(() => {
-    return () => {
-      // Disconnect WebSocket
-      disconnectWebSocket()
-    }
+    return () => { disconnectWebSocket() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -468,16 +454,16 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
           {isDigitalTwinOn && (
             <div className="h-full">
               {isLoading ? (
-                 <div className="flex flex-col items-center justify-center h-full text-green-400">
-                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mb-4"></div>
-                   <p>Connecting to point cloud stream...</p>
-                 </div>
+                <div className="flex flex-col items-center justify-center h-full text-green-400">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mb-4"></div>
+                  <p>Connecting to point cloud stream...</p>
+                </div>
               ) : (
                 <div className="h-full bg-gray-900 rounded relative">
-                   {/* Status indicators */}
-                   <div className="absolute top-2 left-2 z-10 text-xs text-cyan-400 bg-black bg-opacity-75 px-2 py-1 rounded">
-                     {wsConnected ? "● STREAMING" : pointCloudData ? "● RETAINED" : "○ IDLE"}
-                   </div>
+                  {/* Status indicators */}
+                  <div className="absolute top-2 left-2 z-10 text-xs text-cyan-400 bg-black bg-opacity-75 px-2 py-1 rounded">
+                    {wsConnected ? "● STREAMING" : pointCloudData ? "● RETAINED" : "○ IDLE"}
+                  </div>
                   <div className="absolute top-2 right-2 z-10 text-xs text-green-400 bg-black bg-opacity-75 px-2 py-1 rounded">
                     3D VIEW
                   </div>
