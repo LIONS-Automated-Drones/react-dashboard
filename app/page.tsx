@@ -1,9 +1,13 @@
 "use client"
 
+import React, { useRef } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import VideoFeed from "@/components/video-feed"
-import DigitalTwin from "@/components/digital-twin"
+import DigitalTwin, { DigitalTwinHandle } from "@/components/digital-twin"
 import ChatBox from "@/components/chat-box"
 import StatusBox from "@/components/status-box"
+import SaveSnapshotButton from "@/components/SaveSnapshotButton"
 import { DashboardMessagesProvider } from "@/contexts/DashboardMessagesContext"
 
 function DashboardContent() {
@@ -11,16 +15,33 @@ function DashboardContent() {
   if (!langGraphUrl) {
     throw new Error("NEXT_PUBLIC_LANGGRAPH_URL is not set")
   }
+
+  // Ref so SaveSnapshotButton can read the current Digital Twin data
+  const twinRef = useRef<DigitalTwinHandle>(null)
+
   return (
     <div className="min-h-screen bg-zinc-950 p-4">
-      <h1 className="text-2xl font-bold mb-4 text-green-400">ARES Control Panel</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-green-400">ARES Control Panel</h1>
+        <div className="flex items-center gap-2">
+          <SaveSnapshotButton
+            getDigitalTwinData={() => twinRef.current!.getDigitalTwinData()}
+          />
+          {/* Text-style button that opens /snapshots in a new tab */}
+          <Button variant="link" className="text-blue-400 px-2" asChild>
+            <Link href="/snapshots" target="_blank" rel="noopener noreferrer">
+              View Snapshots
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 grid-rows-2 gap-4 h-[calc(100vh-120px)]">
         {/* Top-left: Video Feed - 50% width, 50% height */}
         <VideoFeed title="Live Drone Video Feed" executablePath="test1.exe" />
 
         {/* Top-right: Digital Twin Display - 50% width, 50% height */}
-        <DigitalTwin title="Digital Twin Display" videoId="dQw4w9WgXcQ" />
+        <DigitalTwin ref={twinRef} title="Digital Twin Display" videoId="dQw4w9WgXcQ" />
 
         {/* Bottom-left: Chat interface - 50% width, 50% height */}
         <ChatBox serverUrl={langGraphUrl} />

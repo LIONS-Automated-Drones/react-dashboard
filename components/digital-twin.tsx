@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef, Suspense, useMemo } from "react"
+import type { DigitalTwinData as SnapshotDigitalTwinData } from "@/lib/types"
+import { useState, useEffect, useRef, Suspense, useMemo, forwardRef, useImperativeHandle } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Canvas } from "@react-three/fiber"
@@ -39,9 +40,15 @@ interface PathData {
 }
 
 interface DigitalTwinData {
-  pointCloudData: PointCloudData
-  pathData: PathData
-  poseData: PoseData
+  // made nullable so we can snapshot even if only some are present
+  pointCloudData: PointCloudData | null
+  pathData: PathData | null
+  poseData: PoseData | null
+}
+
+// expose this so the Save button can call into the component
+export type DigitalTwinHandle = {
+  getDigitalTwinData(): SnapshotDigitalTwinData
 }
 
 // Point Cloud Component for Three.js rendering
@@ -185,7 +192,10 @@ function LoadingSpinner() {
   )
 }
 
-export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
+const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function DigitalTwin(
+  { title, videoId },
+  ref
+) {
   const { addMessage } = useDashboardMessages()
   const [isDigitalTwinOn, setIsDigitalTwinOn] = useState(false)
   const [pointCloudData, setPointCloudData] = useState<PointCloudData | null>(null)
@@ -204,17 +214,14 @@ export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
     throw new Error("NEXT_PUBLIC_LINUX_IP is not set")
   }
 
-  // Function to get all digital twin data if available
-  const getDigitalTwinData = (): DigitalTwinData | null => {
-    if (pointCloudData !== null && pathData !== null && poseData !== null) {
-      return {
-        pointCloudData,
-        pathData,
-        poseData
-      }
-    }
-    return null
-  }
+  // EXPOSE: make the current twin data available to a Save button via ref
+  useImperativeHandle(ref, () => ({
+    getDigitalTwinData: () => ({
+      pointCloudData,
+      pathData,
+      poseData,
+    }),
+  }), [pointCloudData, pathData, poseData])
 
   // WebSocket connection management
   const connectWebSocket = () => {
@@ -300,9 +307,9 @@ export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
         addMessage("WebSocket error - Make sure the Python bridge is running")
         console.error("WebSocket error details:", error)
         console.error("WebSocket error event:", {
-          type: error.type,
-          target: error.target,
-          currentTarget: error.currentTarget
+          type: (error as any).type,
+          target: (error as any).target,
+          currentTarget: (error as any).currentTarget
         })
         setWsConnected(false)
       }
@@ -426,9 +433,7 @@ export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
             size="sm"
             onClick={handleDigitalTwinToggle}
             disabled={isLoading}
-            className={`h-7 px-3 text-xs ${
-              isLoading ? "opacity-50 cursor-not-allowed" : ""
-            } bg-green-600 text-white hover:bg-green-700 border-green-600 hover:text-white`}
+            className={`h-7 px-3 text-xs ${isLoading ? "opacity-50 cursor-not-allowed" : ""} bg-green-600 text-white hover:bg-green-700 border-green-600 hover:text-white`}
           >
             {isDigitalTwinOn ? (
               <>
@@ -456,12 +461,8 @@ export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
                   {retainedPointCloudRef.current && (
                     <p>• Point cloud: {(retainedPointCloudRef.current.vertices.length / 3).toLocaleString()} points</p>
                   )}
-                  {retainedPoseRef.current && (
-                    <p>• Pose data available</p>
-                  )}
-                  {retainedPathRef.current && (
-                    <p>• Path: {retainedPathRef.current.num_poses} poses</p>
-                  )}
+                  {retainedPoseRef.current && <p>• Pose data available</p>}
+                  {retainedPathRef.current && <p>• Path: {retainedPathRef.current.num_poses} poses</p>}
                 </div>
               )}
             </div>
@@ -546,4 +547,6 @@ export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
       </CardContent>
     </Card>
   )
-}
+})
+
+export default DigitalTwin
