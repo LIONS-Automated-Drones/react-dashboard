@@ -38,6 +38,12 @@ interface PathData {
   num_poses: number
 }
 
+interface DigitalTwinData {
+  pointCloudData: PointCloudData
+  pathData: PathData
+  poseData: PoseData
+}
+
 // Point Cloud Component for Three.js rendering
 function PointCloud({ data }: { data: PointCloudData | null }) {
   const meshRef = useRef<THREE.Points>(null)
@@ -196,6 +202,18 @@ export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
   const linuxIp = process.env.NEXT_PUBLIC_LINUX_IP
   if (!linuxIp) {
     throw new Error("NEXT_PUBLIC_LINUX_IP is not set")
+  }
+
+  // Function to get all digital twin data if available
+  const getDigitalTwinData = (): DigitalTwinData | null => {
+    if (pointCloudData !== null && pathData !== null && poseData !== null) {
+      return {
+        pointCloudData,
+        pathData,
+        poseData
+      }
+    }
+    return null
   }
 
   // WebSocket connection management
