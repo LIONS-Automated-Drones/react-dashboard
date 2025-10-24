@@ -1,6 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import type React from "react";
+
+import { createContext, useContext, useState, type ReactNode, useRef } from "react";
 
 // Define the type for dashboard messages to include a timestamp
 export interface DashboardMessage {
@@ -34,6 +36,8 @@ interface DashboardMessagesContextType {
   addMessage: (content: string) => void;
   telemetry: TelemetryData | null;
   setTelemetry: (data: TelemetryData) => void;
+  wsRef: React.MutableRefObject<WebSocket | null>;
+  sendWebSocketMessage: (message: string) => boolean;
 }
 
 const DashboardMessagesContext = createContext<DashboardMessagesContextType | undefined>(undefined);
@@ -45,6 +49,8 @@ export const DashboardMessagesProvider = ({ children }: { children: ReactNode })
   ]);
   
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
+
+  const wsRef = useRef<WebSocket | null>(null);
 
   const addMessage = (content: string) => {
     // This logic to filter messages seems important from page.tsx
@@ -58,8 +64,23 @@ export const DashboardMessagesProvider = ({ children }: { children: ReactNode })
     }
   };
 
+  const sendWebSocketMessage = (message: string): boolean => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(message)
+        return true
+      } catch (error) {
+        addMessage(`Failed to send WebSocket message: ${error instanceof Error ? error.message : "Unknown error"}`)
+        return false
+      }
+    } else {
+      addMessage("Cannot send message - WebSocket not connected")
+      return false
+    }
+  }
+
   return (
-    <DashboardMessagesContext.Provider value={{ messages, addMessage, telemetry, setTelemetry }}>
+    <DashboardMessagesContext.Provider value={{ messages, addMessage, telemetry, setTelemetry, wsRef, sendWebSocketMessage }}>
       {children}
     </DashboardMessagesContext.Provider>
   );

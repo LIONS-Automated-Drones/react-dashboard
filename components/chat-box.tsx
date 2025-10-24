@@ -21,7 +21,7 @@ interface ChatMessage {
 }
 
 export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
-  const { addMessage, setTelemetry } = useDashboardMessages()
+  const { addMessage, setTelemetry, wsRef } = useDashboardMessages()
   const [input, setInput] = useState("")
   const [serverUrl, setServerUrl] = useState(initialServerUrl)
   const [isEditingServer, setIsEditingServer] = useState(false)
@@ -38,7 +38,6 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
   const [isConnected, setIsConnected] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting" | "error">("disconnected")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const maxReconnectAttempts = 5
