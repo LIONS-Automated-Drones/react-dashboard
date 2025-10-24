@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { addSnapshot } from "@/lib/snapshots.store";
-import { DigitalTwinData, SnapshotRecord } from "@/lib/types";
+import { SnapshotRecord } from "@/lib/types";
+import { DigitalTwinData } from "./twin-rendering-shared";
 import { Button } from "./ui/button";
 import { SaveIcon, ExternalLinkIcon, CheckCircle2 } from "lucide-react";
 import {
@@ -79,12 +80,16 @@ export default function SaveSnapshotButton({
         : null;
 
       const numPoints = pc?.vertices ? Math.floor(pc.vertices.length / 3) : 0;
-
+      const digitalTwinData: DigitalTwinData = {
+        pointCloudData: pc,
+        pathData: twin.pathData,
+        poseData: twin.poseData,
+      };
       const rec: SnapshotRecord = {
         id: guid(),
         name,
         createdAt: Date.now(),
-        digitalTwinJson: JSON.stringify({ pointCloudData: pc }), // ⬅️ arrays, not typed arrays
+        digitalTwinJson: JSON.stringify(digitalTwinData), // ⬅️ arrays, not typed arrays
         numPointCloudPoints: numPoints,
       };
 

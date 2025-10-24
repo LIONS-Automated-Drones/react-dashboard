@@ -1,218 +1,22 @@
 "use client"
 
-import type { DigitalTwinData as SnapshotDigitalTwinData } from "@/lib/types"
 import { useState, useEffect, useRef, Suspense, useMemo, forwardRef, useImperativeHandle } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei"
 import { Eye, EyeOff } from "lucide-react"
-import * as THREE from "three"
 import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
+import { PathLine, PathData, PointCloud, PointCloudData, PoseIndicator, PoseData, DigitalTwinData } from "./twin-rendering-shared"
 
 interface DigitalTwinProps {
   title: string
   videoId: string
 }
 
-interface PointCloudData {
-  vertices: Float32Array
-  // ✅ accept either; live stream could be bytes (0..255) or floats (0..1 or 0..255)
-  colors: Float32Array | Uint8Array
-  timestamp: number
-}
-
-interface PoseData {
-  position: { x: number; y: number; z: number }
-  orientation: { x: number; y: number; z: number; w: number }
-  covariance: number[]
-  timestamp: number
-  frame_id: string
-}
-
-interface PathData {
-  poses: Array<{
-    position: { x: number; y: number; z: number }
-    orientation: { x: number; y: number; z: number; w: number }
-  }>
-  timestamp: number
-  frame_id: string
-  num_poses: number
-}
-
-interface DigitalTwinData {
-  // made nullable so we can snapshot even if only some are present
-  pointCloudData: PointCloudData | null
-  pathData: PathData | null
-  poseData: PoseData | null
-}
-
 // expose this so the Save button can call into the component
 export type DigitalTwinHandle = {
-  getDigitalTwinData(): SnapshotDigitalTwinData
-}
-
-// Point Cloud Component for Three.js rendering
-function PointCloud({ data }: { data: PointCloudData | null }) {
-  const meshRef = useRef<THREE.Points>(null)
-
-  useEffect(() => {
-    if (!meshRef.current) return
-
-    // dispose previous geometry if we’re about to replace it
-    if (meshRef.current.geometry) {
-      meshRef.current.geometry.dispose()
-      meshRef.current.geometry = new THREE.BufferGeometry()
-    }
-
-    if (!data) {
-      // show a placeholder cube when empty
-      const g = new THREE.BoxGeometry(2, 2, 2)
-      const m = new THREE.MeshStandardMaterial({ color: "gray", wireframe: true })
-      // Render a mesh inside a <points> is invalid; fall back to no-geometry on points
-      // We simply leave the <points> empty; the outer placeholder is handled in JSX below
-      g.dispose()
-      m.dispose()
-      return
-    }
-
-    const { vertices, colors } = data
-    const geom = new THREE.BufferGeometry()
-
-    // positions
-    geom.setAttribute("position", new THREE.BufferAttribute(vertices, 3))
-
-    // colors (optional but preferred)
-    if (colors && colors.length === vertices.length) {
-      if (colors instanceof Uint8Array) {
-        // bytes 0..255 — we can mark the attribute as normalized
-        const attr = new THREE.BufferAttribute(colors, 3, true) // normalized = true
-        geom.setAttribute("color", attr)
-      } else {
-        // Float32Array — could be 0..1 (good) or 0..255 (normalize)
-        let needsDivide = false
-        for (let i = 0; i < Math.min(colors.length, 90); i++) {
-          if (colors[i] > 1.0) { needsDivide = true; break }
-        }
-        if (needsDivide) {
-          const scaled = new Float32Array(colors.length)
-          for (let i = 0; i < colors.length; i++) scaled[i] = colors[i] / 255
-          geom.setAttribute("color", new THREE.BufferAttribute(scaled, 3))
-        } else {
-          geom.setAttribute("color", new THREE.BufferAttribute(colors, 3))
-        }
-      }
-    } // else: skip color attribute so we still render positions
-
-    meshRef.current.geometry = geom
-
-    return () => {
-      geom.dispose()
-    }
-  }, [data])
-
-  if (!data) {
-    return (
-      <group>
-        <mesh>
-          <boxGeometry args={[2, 2, 2]} />
-          <meshStandardMaterial color="gray" wireframe />
-        </mesh>
-      </group>
-    )
-  }
-
-  return (
-    <points ref={meshRef}>
-      {/* geometry + attributes are assigned imperatively */}
-      <pointsMaterial size={0.05} vertexColors toneMapped={false} sizeAttenuation />
-    </points>
-  )
-}
-
-// Path Line Component - renders the green trajectory
-function PathLine({ data }: { data: PathData | null }) {
-  const points = useMemo(() => {
-    if (!data || data.poses.length === 0) return []
-    return data.poses.map(
-      pose => new THREE.Vector3(pose.position.x, pose.position.z, -pose.position.y)
-    )
-  }, [data])
-
-  if (points.length === 0) return null
-
-  return (
-    <line>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[new Float32Array(points.flatMap(p => [p.x, p.y, p.z])), 3]}
-        />
-      </bufferGeometry>
-      <lineBasicMaterial color="#00ff00" />
-    </line>
-  )
-}
-
-// Pose Indicator Component - renders the purple cloud and red arrow
-function PoseIndicator({ data }: { data: PoseData | null }) {
-  const groupRef = useRef<THREE.Group>(null)
-
-  useEffect(() => {
-    if (groupRef.current && data) {
-      const quaternion = new THREE.Quaternion(
-        data.orientation.x,
-        data.orientation.z,
-        -data.orientation.y,
-        data.orientation.w
-      )
-      groupRef.current.quaternion.copy(quaternion)
-      groupRef.current.position.set(data.position.x, data.position.z, -data.position.y)
-    }
-  }, [data])
-
-  if (!data) return null
-
-  // Extract position uncertainty from covariance matrix
-  // Covariance is a 6x6 matrix (36 elements), diagonal elements are variances
-  const covX = Math.sqrt(Math.abs(data.covariance[0])) // variance in x
-  const covY = Math.sqrt(Math.abs(data.covariance[7])) // variance in y
-  const covZ = Math.sqrt(Math.abs(data.covariance[14])) // variance in z
-
-  // Scale factors for visualization (clamped to reasonable size)
-  const scaleX = Math.min(Math.max(covX * 2, 0.2), 0.5)
-  const scaleY = Math.min(Math.max(covY * 2, 0.2), 0.5)
-  const scaleZ = Math.min(Math.max(covZ * 2, 0.2), 0.5)
-
-  return (
-    <group ref={groupRef}>
-      {/* Purple ellipsoid representing position uncertainty */}
-      <mesh scale={[scaleX, scaleZ, scaleY]}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshStandardMaterial 
-          color="#9b59b6" 
-          transparent 
-          opacity={0.5}
-          emissive="#9b59b6"
-          emissiveIntensity={0.3}
-        />
-      </mesh>
-      
-      {/* Red arrow showing orientation */}
-      <group scale={0.5}>
-        {/* Arrow shaft */}
-        <mesh position={[0.4, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.04, 0.04, 0.8, 8]} />
-          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.5} />
-        </mesh>
-        {/* Arrow head */}
-        <mesh position={[0.8, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-          <coneGeometry args={[0.12, 0.25, 8]} />
-          <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.5} />
-        </mesh>
-      </group>
-    </group>
-  )
+  getDigitalTwinData(): DigitalTwinData
 }
 
 // Loading component
