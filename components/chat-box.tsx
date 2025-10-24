@@ -68,6 +68,7 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
 
   // Setup WebSocket connection
   const connectWebSocket = () => {
+    reconnectTimeoutRef.current = null
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return // Already connected
     }
@@ -447,7 +448,7 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
               onClick={handleConnect}
               size="sm"
               variant={isConnected ? "destructive" : "default"}
-              disabled={connectionStatus === "connecting"}
+              disabled={connectionStatus === "connecting" || reconnectTimeoutRef.current != null}
               className="h-6 px-3 text-xs bg-green-600 text-white hover:bg-green-700"
             >
               {isConnected ? (
@@ -460,7 +461,13 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
                   <div className="animate-spin rounded-full h-3 w-3 border-b border-white mr-1"></div>
                   Connecting...
                 </>
-              ) : (
+              ) : reconnectTimeoutRef.current != null ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b border-white mr-1"></div>
+                  Waiting...
+                </>
+              )
+              :  (
                 <>
                   <Plug className="h-3 w-3 mr-1" />
                   Connect
@@ -475,7 +482,7 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
         <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
           {messages.map((message) => (
             <div
-              key={message.id}
+              key={message.id + message.content}
               className={`mb-3 flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
             >
               <div

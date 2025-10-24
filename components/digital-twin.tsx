@@ -260,9 +260,6 @@ export default function DigitalTwin({ title, videoId }: DigitalTwinProps) {
 
             setPointCloudData(pointCloudData)
             retainedPointCloudRef.current = pointCloudData
-
-            const numPoints = data.pointcloud.num_points || vertices.length / 3
-            addMessage(`Point cloud updated - ${numPoints.toLocaleString()} points from ${data.pointcloud.frame_id || "sensor"}`)
           }
 
           // Handle pose data
