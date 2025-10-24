@@ -6,6 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import { getSnapshot, deleteSnapshot } from "@/lib/snapshots.store";
 import DigitalTwinRenderer from "@/components/DigitalTwinRenderer";
 import type { DigitalTwinData, SnapshotRecord } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { ArrowLeftIcon, TrashIcon } from "lucide-react";
 
 export default function SnapshotDetailPage() {
   const params = useParams<{ id: string }>();
@@ -46,15 +48,17 @@ export default function SnapshotDetailPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Snapshot: {rec.name}</h1>
         <div className="flex gap-2">
-          <Link href="/snapshots" className="text-blue-600 underline">
-            Back
-          </Link>
+          <Button variant="secondary" size="sm" >
+            <Link href="/snapshots">
+              <ArrowLeftIcon className="w-4 h-4 inline-block" /> Back
+            </Link>
+          </Button>
           <button
             onClick={onDelete}
             disabled={deleting}
             className="px-3 py-1 rounded bg-red-600 text-white disabled:opacity-50"
           >
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting ? "Deleting…" : "Delete"} <TrashIcon className="w-4 h-4 inline-block" />
           </button>
         </div>
       </div>

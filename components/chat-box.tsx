@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, Plug, PlugZap } from 'lucide-react'
 import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
+import { eventBus } from "@/lib/eventBus"
 
 interface ChatBoxProps {
   serverUrl: string
@@ -167,6 +168,11 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
           if (messageContent.startsWith("[INFO]")) {
             let trimmed = messageContent.substring(6).trim()
             addMessage(trimmed)
+            return
+          }
+          if (messageContent.startsWith("[COMMAND]") && messageContent.includes("TAKE_PICTURE")) {
+            console.log('TAKE_PICTURE command detected, emitting captureScreenshot event');
+            eventBus.emit('captureScreenshot');
             return
           }
           const serverMessage: ChatMessage = {

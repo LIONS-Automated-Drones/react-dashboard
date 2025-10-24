@@ -3,6 +3,8 @@
 import React from "react";
 import { addSnapshot } from "@/lib/snapshots.store";
 import { DigitalTwinData, SnapshotRecord } from "@/lib/types";
+import { Button } from "./ui/button";
+import { SaveIcon } from "lucide-react";
 
 function guid(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -60,11 +62,12 @@ export default function SaveSnapshotButton({
   };
 
   return (
-    <button
+    <Button
       onClick={onSave}
-      className={`px-3 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white shadow ${className ?? ""}`}
+      variant="emerald"
+      className={`px-3 py-2 shadow ${className ?? ""}`}
     >
-      Save Snapshot
-    </button>
+      Save Snapshot <SaveIcon className="w-4 h-4 inline-block" />
+    </Button>
   );
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { listSnapshots, deleteSnapshot, clearAllSnapshots } from "@/lib/snapshots.store";
 import type { SnapshotRecord } from "@/lib/types";
+import { TrashIcon } from "lucide-react";
 
 export default function SnapshotsPage() {
   const [rows, setRows] = useState<SnapshotRecord[]>([]);
@@ -69,7 +70,8 @@ export default function SnapshotsPage() {
             disabled={clearing || rows.length === 0}
             className="px-3 py-1 rounded bg-red-600 text-white disabled:opacity-50"
           >
-            {clearing ? "Clearing…" : "Clear All"}
+            {clearing ? "Deleting All…" : "Delete All"}
+            <TrashIcon className="w-4 h-4 inline-block ml-2" />
           </button>
         </div>
       </div>
@@ -133,7 +135,7 @@ export default function SnapshotsPage() {
                     disabled={busyId === row.id}
                     className="px-2 py-1 rounded bg-red-600 text-white disabled:opacity-50"
                   >
-                    {busyId === row.id ? "Deleting…" : "Delete"}
+                    {busyId === row.id ? "Deleting…" : "Delete"} <TrashIcon className="w-4 h-4 inline-block" />
                   </button>
                 </td>
               </tr>

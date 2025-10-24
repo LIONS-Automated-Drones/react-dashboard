@@ -9,6 +9,7 @@ import ChatBox from "@/components/chat-box"
 import StatusBox from "@/components/status-box"
 import SaveSnapshotButton from "@/components/SaveSnapshotButton"
 import { DashboardMessagesProvider } from "@/contexts/DashboardMessagesContext"
+import { EyeIcon } from "lucide-react"
 
 function DashboardContent() {
   const langGraphUrl = process.env.NEXT_PUBLIC_LANGGRAPH_URL || ""
@@ -28,9 +29,9 @@ function DashboardContent() {
             getDigitalTwinData={() => twinRef.current!.getDigitalTwinData()}
           />
           {/* Text-style button that opens /snapshots in a new tab */}
-          <Button variant="link" className="text-blue-400 px-2" asChild>
+          <Button variant="info" className="px-2" asChild>
             <Link href="/snapshots" target="_blank" rel="noopener noreferrer">
-              View Snapshots
+              View Snapshots <EyeIcon className="w-4 h-4 inline-block" />
             </Link>
           </Button>
         </div>
