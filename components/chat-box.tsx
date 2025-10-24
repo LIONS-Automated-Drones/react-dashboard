@@ -330,8 +330,14 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
     }
   }
 
+  // Sanitize input to allow only alphanumeric characters and whitespace
+  const sanitizeInput = (value: string): string => {
+    return value.replace(/[^a-zA-Z0-9\s]/g, '')
+  }
+
   const sendMessage = () => {
-    if (!input.trim()) return
+    const sanitizedInput = sanitizeInput(input)
+    if (!sanitizedInput.trim()) return
 
     if (!isConnected || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       addMessage("Cannot send message - WebSocket not connected")
@@ -349,17 +355,17 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
     const userMessage: ChatMessage = {
       id: Date.now(),
       sender: "user",
-      content: input,
+      content: sanitizedInput,
       timestamp: new Date(),
       showTimestamp: false,
     }
 
     setMessages((prev) => [...prev, userMessage])
-    addMessage(`User sent: ${input}`)
+    addMessage(`User sent: ${sanitizedInput}`)
     
     // Send message as plain string through WebSocket
     try {
-      wsRef.current.send(input)
+      wsRef.current.send(sanitizedInput)
       setInput("")
       setIsLoading(true)
     } catch (error) {
