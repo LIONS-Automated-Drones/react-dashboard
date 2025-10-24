@@ -38,6 +38,8 @@ interface DashboardMessagesContextType {
   setTelemetry: (data: TelemetryData) => void;
   wsRef: React.MutableRefObject<WebSocket | null>;
   sendWebSocketMessage: (message: string) => boolean;
+  manualOverride: boolean;
+  setManualOverride: (override: boolean) => void;
 }
 
 const DashboardMessagesContext = createContext<DashboardMessagesContextType | undefined>(undefined);
@@ -49,7 +51,7 @@ export const DashboardMessagesProvider = ({ children }: { children: ReactNode })
   ]);
   
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
-
+  const [manualOverride, setManualOverride] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   const addMessage = (content: string) => {
@@ -80,7 +82,7 @@ export const DashboardMessagesProvider = ({ children }: { children: ReactNode })
   }
 
   return (
-    <DashboardMessagesContext.Provider value={{ messages, addMessage, telemetry, setTelemetry, wsRef, sendWebSocketMessage }}>
+    <DashboardMessagesContext.Provider value={{ messages, addMessage, telemetry, setTelemetry, wsRef, sendWebSocketMessage, manualOverride, setManualOverride }}>
       {children}
     </DashboardMessagesContext.Provider>
   );

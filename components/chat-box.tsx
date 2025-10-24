@@ -22,7 +22,7 @@ interface ChatMessage {
 }
 
 export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
-  const { addMessage, setTelemetry, wsRef } = useDashboardMessages()
+  const { addMessage, setTelemetry, wsRef, manualOverride } = useDashboardMessages()
   const [input, setInput] = useState("")
   const [serverUrl, setServerUrl] = useState(initialServerUrl)
   const [isEditingServer, setIsEditingServer] = useState(false)
@@ -545,14 +545,15 @@ export default function ChatBox({ serverUrl: initialServerUrl }: ChatBoxProps) {
                   : "Type your message..."
             }
             onKeyDown={(e) => !isLoading && isConnected && e.key === "Enter" && sendMessage()}
-            disabled={isLoading || !isConnected}
-            className={isLoading || !isConnected ? "bg-gray-700 text-gray-400" : "bg-gray-700 text-gray-200"}
+            disabled={isLoading || !isConnected || manualOverride}
+            className={isLoading || !isConnected || manualOverride ? "bg-gray-700 text-gray-400" : "bg-gray-700 text-gray-200"}
           />
           <Button
             onClick={sendMessage}
-            disabled={isLoading || !isConnected}
-            className={`bg-green-600 text-white hover:bg-green-700 ${
-              isLoading || !isConnected ? "opacity-50 cursor-not-allowed" : ""
+            variant={manualOverride ? "destructive" : "green"}
+            disabled={isLoading || !isConnected || manualOverride}
+            className={` ${
+              isLoading || !isConnected || manualOverride ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             <Send className="h-4 w-4" />

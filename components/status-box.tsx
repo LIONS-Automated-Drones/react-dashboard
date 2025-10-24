@@ -8,9 +8,8 @@ import { Battery, Wifi, Shield, ShieldCheck } from "lucide-react"
 import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
 
 export default function StatusBox() {
-  const { messages, addMessage, telemetry, sendWebSocketMessage } = useDashboardMessages()
+  const { messages, addMessage, telemetry, sendWebSocketMessage, manualOverride, setManualOverride } = useDashboardMessages()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const [manualOverride, setManualOverride] = useState(false)
 
   // No more fake telemetry simulation - using real data from WebSocket
 
@@ -27,23 +26,22 @@ export default function StatusBox() {
   }, [messages])
 
   const handleManualOverride = () => {
-    const newOverrideState = !manualOverride
-    setManualOverride(newOverrideState)
-    addMessage(`Manual Override ${newOverrideState ? "ENABLED" : "DISABLED"}`)
+    const newVal = !manualOverride
+    setManualOverride(newVal)
+    addMessage(`Manual Override ${newVal ? "ENABLED" : "DISABLED"}`)
 
-
-    if (newOverrideState) {
+    if (newVal) {
       const sent = sendWebSocketMessage("cancel")
-      if (sent) {
-        addMessage("Sent 'cancel' command to server")
+      if (!sent) {
+        addMessage("Failed to send 'cancel' command to server")
       }
-      addMessage("Drone armed - Manual control active")
+      addMessage("Drone disarmed - Manual control active")
     } else {
       const sent = sendWebSocketMessage("restart")
-      if (sent) {
-        addMessage("Sent 'restart' command to server")
+      if (!sent) {
+        addMessage("Failed to send 'restart' command to server")
       }
-      addMessage("Drone disarmed - Returning to autonomous mode")
+      addMessage("Drone armed - Returning to autonomous mode")
     }
   }
 
@@ -92,8 +90,8 @@ export default function StatusBox() {
           <div className="flex flex-col items-center space-y-1">
             <Button
               onClick={handleManualOverride}
-              variant={manualOverride ? "destructive" : "default"}
-              className="h-9 px-3 text-xs font-medium bg-green-600 text-white hover:bg-green-700"
+              variant={manualOverride ? "destructive" : "emerald"}
+              className="h-9 px-3 text-xs font-medium"
             >
               Manual Override
               {manualOverride && <span className="ml-1 text-xs">(ON)</span>}
