@@ -45,6 +45,14 @@ export default function StatusBox() {
     }
   }
 
+  const handleMoveForward = () => {
+    const sent = sendWebSocketMessage("moveforward")
+    if (sent) {
+      addMessage("Sent 'moveforward' command to server")
+    }
+    else addMessage("Failed to send 'moveforward' command to server")
+  }
+
   const getBatteryColor = (level: number) => {
     if (level > 50) return "text-green-400"
     if (level > 20) return "text-yellow-400"
@@ -88,6 +96,12 @@ export default function StatusBox() {
         <div className="flex items-center justify-between h-full w-full">
           {/* Manual Override Button */}
           <div className="flex flex-col items-center space-y-1">
+            <Button
+              onClick={handleMoveForward}
+              className="h-9 px-3 text-xs font-medium bg-emerald-500 text-white hover:bg-emerald-600"
+            >
+              Move Forward
+            </Button>
             <Button
               onClick={handleManualOverride}
               variant={manualOverride ? "destructive" : "emerald"}
