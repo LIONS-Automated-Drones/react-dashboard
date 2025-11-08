@@ -7,7 +7,7 @@ import { Canvas } from "@react-three/fiber"
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei"
 import { Eye, EyeOff } from "lucide-react"
 import { useDashboardMessages } from "@/contexts/DashboardMessagesContext"
-import { PathLine, PathData, PointCloud, PointCloudData, PoseIndicator, PoseData, DigitalTwinData } from "./twin-rendering-shared"
+import { PathLine, PathData, PointCloud, PointCloudData, PoseIndicator, PoseData, DigitalTwinData, WorldMemoryData, WorldMemoryObjects } from "./twin-rendering-shared"
 
 interface DigitalTwinProps {
   title: string
@@ -38,11 +38,13 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
   const [pointCloudData, setPointCloudData] = useState<PointCloudData | null>(null)
   const [poseData, setPoseData] = useState<PoseData | null>(null)
   const [pathData, setPathData] = useState<PathData | null>(null)
+  const [worldMemoryData, setWorldMemoryData] = useState<WorldMemoryData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   // Add refs to store the retained data
   const retainedPointCloudRef = useRef<PointCloudData | null>(null)
   const retainedPoseRef = useRef<PoseData | null>(null)
   const retainedPathRef = useRef<PathData | null>(null)
+  const retainedWorldMemoryRef = useRef<WorldMemoryData | null>(null)
   // WebSocket connection
   const wsRef = useRef<WebSocket | null>(null)
   const [wsConnected, setWsConnected] = useState(false)
@@ -58,9 +60,10 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
         pointCloudData,
         pathData,
         poseData,
+        worldMemoryData,
       }),
     }),
-    [pointCloudData, pathData, poseData]
+    [pointCloudData, pathData, poseData, worldMemoryData]
   )
 
   // WebSocket connection management
@@ -129,6 +132,13 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
             setPathData(path)
             retainedPathRef.current = path
           }
+
+          // Handle world_memory data
+          if (data.world_memory) {
+            const worldMemory: WorldMemoryData = data.world_memory
+            setWorldMemoryData(worldMemory)
+            retainedWorldMemoryRef.current = worldMemory
+          }
         } catch (error) {
           addMessage(`Error parsing data: ${error instanceof Error ? error.message : "Unknown error"}`)
         }
@@ -183,6 +193,10 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
         setPathData(retainedPathRef.current)
         addMessage(`Displaying retained path (${retainedPathRef.current.num_poses} poses)`)
       }
+      if (retainedWorldMemoryRef.current) {
+        setWorldMemoryData(retainedWorldMemoryRef.current)
+        addMessage(`Displaying retained world memory (${Object.keys(retainedWorldMemoryRef.current).length} objects)`)
+      }
       
       // Connect to WebSocket
       connectWebSocket()
@@ -197,7 +211,8 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
       if (pointCloudData) retainedPointCloudRef.current = pointCloudData
       if (poseData) retainedPoseRef.current = poseData
       if (pathData) retainedPathRef.current = pathData
-      if (pointCloudData || poseData || pathData) addMessage("Data retained for session")
+      if (worldMemoryData) retainedWorldMemoryRef.current = worldMemoryData
+      if (pointCloudData || poseData || pathData || worldMemoryData) addMessage("Data retained for session")
     }
   }
 
@@ -239,7 +254,7 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
             <div className="flex flex-col items-center justify-center h-full text-green-400 text-center">
               <p className="mb-2">Digital twin not displayed</p>
               <p className="text-xs text-gray-500">Click Digital Twin On to view 3D environment</p>
-              {(retainedPointCloudRef.current || retainedPoseRef.current || retainedPathRef.current) && (
+              {(retainedPointCloudRef.current || retainedPoseRef.current || retainedPathRef.current || retainedWorldMemoryRef.current) && (
                 <div className="text-xs text-blue-400 mt-2">
                   <p className="font-semibold mb-1">Retained data available:</p>
                   {retainedPointCloudRef.current && (
@@ -247,6 +262,7 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
                   )}
                   {retainedPoseRef.current && <p>• Pose data available</p>}
                   {retainedPathRef.current && <p>• Path: {retainedPathRef.current.num_poses} poses</p>}
+                  {retainedWorldMemoryRef.current && <p>• World memory: {Object.keys(retainedWorldMemoryRef.current).length} objects</p>}
                 </div>
               )}
             </div>
@@ -295,10 +311,15 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
                     <Suspense fallback={null}>
                       <PoseIndicator data={poseData} />
                     </Suspense>
+
+                    {/* World Memory Objects */}
+                    <Suspense fallback={null}>
+                      <WorldMemoryObjects data={worldMemoryData} />
+                    </Suspense>
                   </Canvas>
 
                    {/* Info panel */}
-                   {(pointCloudData || poseData || pathData) && (
+                   {(pointCloudData || poseData || pathData || worldMemoryData) && (
                      <div className="absolute bottom-2 left-2 z-10 text-xs text-green-400 bg-black bg-opacity-75 px-2 py-1 rounded max-w-xs">
                        {pointCloudData && (
                          <>
@@ -313,6 +334,9 @@ const DigitalTwin = forwardRef<DigitalTwinHandle, DigitalTwinProps>(function Dig
                        )}
                        {pathData && (
                          <p className="text-green-400">Path: {pathData.num_poses} poses</p>
+                       )}
+                       {worldMemoryData && (
+                         <p className="text-pink-400">Objects: {Object.keys(worldMemoryData).length} detected</p>
                        )}
                        {!wsConnected && <p className="text-blue-400">Status: Retained</p>}
                        {wsConnected && <p className="text-cyan-400">Status: Live Stream</p>}

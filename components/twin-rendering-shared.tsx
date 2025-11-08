@@ -6,6 +6,7 @@ export interface DigitalTwinData {
     pointCloudData: PointCloudData | null
     pathData: PathData | null
     poseData: PoseData | null
+    worldMemoryData?: WorldMemoryData | null
 }
 
 export interface PointCloudData {
@@ -30,6 +31,17 @@ export interface PathData {
     timestamp: number
     frame_id: string
     num_poses: number
+}
+
+export interface WorldMemoryData {
+    [object_id: string]: {
+      class_name: string
+      map_coords: {
+        x: number
+        y: number
+        z: number
+      }
+    }
 }
 
 // Coerce positions from deserialized JSON back to Float32Array
@@ -245,6 +257,43 @@ export function PointCloud({ data }: { data: PointCloudData | null }) {
             <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.5} />
           </mesh>
         </group>
+      </group>
+    )
+  }
+
+  // World Memory Objects Component - renders detected objects as pink spheres
+  export function WorldMemoryObjects({ data }: { data: WorldMemoryData | null }) {
+    const spheres = useMemo(() => {
+      if (!data) return []
+      
+      return Object.entries(data).map(([object_id, obj]) => ({
+        id: object_id,
+        class_name: obj.class_name,
+        // Convert ROS coordinates (x, y, z) to Three.js coordinates (x, z, -y)
+        position: new THREE.Vector3(
+          obj.map_coords.x,
+          obj.map_coords.z,
+          -obj.map_coords.y
+        )
+      }))
+    }, [data])
+  
+    if (spheres.length === 0) return null
+  
+    return (
+      <group>
+        {spheres.map(sphere => (
+          <mesh key={sphere.id} position={sphere.position}>
+            <sphereGeometry args={[0.3, 16, 16]} />
+            <meshStandardMaterial 
+              color="#ff1493" // Deep pink
+              transparent 
+              opacity={0.7}
+              emissive="#ff1493"
+              emissiveIntensity={0.6}
+            />
+          </mesh>
+        ))}
       </group>
     )
   }
