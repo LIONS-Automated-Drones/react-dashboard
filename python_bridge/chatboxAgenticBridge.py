@@ -41,7 +41,7 @@ async def dashboardHandler(websocket):
         print("Connection closed with the React Dashboard")
 
 async def main():
-    await websockets.serve(agenticHandler, "localhost", 12691)   # server for connecting to the VirtualBox agent_pilot
+    await websockets.serve(agenticHandler, "0.0.0.0", 12691)   # server for connecting to the VirtualBox agent_pilot
     await websockets.serve(dashboardHandler, "localhost", 12345) # server for connecting to the React Dashboard
     await asyncio.Future()
 

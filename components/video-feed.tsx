@@ -18,6 +18,8 @@ export default function VideoFeed({ title, executablePath }: VideoFeedProps) {
   const { addMessage } = useDashboardMessages()
   const [isVideoFeedOn, setIsVideoFeedOn] = useState(false)
   const [isLeftCamera, setIsLeftCamera] = useState(false) // false = right, true = left
+  const leftTopic = process.env.NEXT_PUBLIC_CAMERA_LEFT_TOPIC || "/stereo/left"
+  const rightTopic = process.env.NEXT_PUBLIC_CAMERA_RIGHT_TOPIC || "/stereo/right"
   
   const handleVideoFeedToggle = () => {
     const newVideoState = !isVideoFeedOn
@@ -111,7 +113,7 @@ export default function VideoFeed({ title, executablePath }: VideoFeedProps) {
               </div>
 
               <RosVideoStream
-                topic={isLeftCamera ? "/stereo/left" : "/stereo/right"}
+                topic={isLeftCamera ? leftTopic : rightTopic}
                 className="w-full h-full object-contain"
               />
             </>
